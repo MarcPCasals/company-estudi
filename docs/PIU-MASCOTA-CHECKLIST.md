@@ -33,30 +33,119 @@
 ## 1.1. Tancar el disseny definitiu de Piu
 
 - [ ] Seleccionar una única versió base del personatge.
-- [ ] Definir les proporcions definitives del cap, cos, ales, potes, bec i ulls.
-- [ ] Simplificar les formes perquè es reconegui bé a 32 × 32 px.
-- [ ] Definir la paleta cromàtica principal.
-- [ ] Definir el contorn o sistema d'ombres.
-- [ ] Evitar detalls petits que es perdin en pantalla.
-- [ ] Crear una vista frontal o tres quarts com a postura principal.
+- [x] Definir les proporcions generals del cap, cos, ales, potes, bec i ulls.
+- [x] Simplificar les formes perquè sigui una mascota rodona, icònica i llegible en mides petites.
+- [x] Definir la jerarquia de la paleta cromàtica principal.
+- [x] Definir l'estil d'ombres: flat amb ombres molt suaus.
+- [x] Evitar textures detallades de plomes i altres detalls petits.
+- [x] Escollir la vista frontal o tres quarts com a postura principal.
+- [ ] Comprovar que es reconegui bé a 32 × 32 px.
 - [ ] Comprovar que no s'assembli excessivament a Duo de Duolingo.
 
-## 1.2. Guia visual mínima
+## 1.2. Model visual acordat
+
+Aquesta secció recull les decisions que s'han de mantenir en totes les il·lustracions, postures i expressions de Piu.
+
+### Concepte i silueta
+
+- Piu és una **mascota rodona, icònica i poc realista**, inspirada en el pit-roig europeu.
+- El cos és compacte, gairebé circular i lleugerament més ample a la part inferior.
+- El cap queda integrat amb el cos, sense coll visible.
+- El cap és lleugerament gran respecte del cos per afavorir l'expressivitat.
+- La silueta s'ha de poder reconèixer fins i tot sense colors ni accessoris.
+- La postura principal és frontal o en tres quarts, amb una lleugera inclinació que transmeti atenció.
+
+### Proporcions i anatomia simplificada
+
+- Ulls grans i expressius, però no desproporcionats.
+- Ulls lleugerament ovalats, separats i amb pupil·la fosca i un únic punt de llum.
+- Bec petit, curt, triangular i amable; mai llarg ni punxegut.
+- Ales curtes, arrodonides i enganxades al cos.
+- Potes curtes, fines i molt simples.
+- Sense textura detallada de plomes, urpes realistes ni anatomia complexa.
+- Les celles no són permanents: només apareixen quan una emoció concreta les necessita.
+
+### Distribució del plomatge
+
+- El pit taronja és el tret visual principal i ocupa bona part de la cara i del frontal del cos.
+- La part inferior del ventre és crema.
+- El dors, la part superior del cap, les ales i la cua són marrons.
+- Piu incorpora una **franja gris blavosa** entre el pit taronja i les ales marrons, inspirada en el pit-roig real.
+- Aquesta franja es mostra sobretot als laterals del coll i a la zona alta del pit.
+- No ha de semblar una línia rígida: ha de ser una forma ampla, suau i integrada.
+- En mides petites, la franja es pot simplificar a dues zones laterals visibles.
+
+### Estil gràfic
+
+- Estil **flat amb volum i ombres molt suaus**.
+- Aspecte de dibuix digital net, no de model 3D ni d'ocell realista.
+- Sense degradats complexos ni ombres dures.
+- Sense contorns negres gruixuts; les separacions es resolen amb contrast de color i ombres discretes.
+- Les formes han de ser prou simples per facilitar-ne la reproducció, la vectorització i l'animació.
+
+### Paleta cromàtica inicial
+
+Els valors següents són orientatius fins que s'extreguin i es validin els colors exactes del model definitiu.
+
+| Ús | Color | HEX orientatiu |
+|---|---|---|
+| Pit i cara de Piu · color principal | Taronja viu | `#DB6730` |
+| Cos, cap i ales | Marró càlid | `#8D5D33` |
+| Ombres fosques | Marró profund | `#664425` |
+| Ventre | Crema | `#E9CFA9` |
+| Zones clares | Crema molt clar | `#F2E4CF` |
+| Franja lateral | Gris blavós | `#8B9492` |
+| Ombra de la franja | Gris blavós fosc | `#6F7776` |
+| Llum de la franja | Gris blavós clar | `#AAB1AE` |
+| Accessoris principals | Verd apagat | `#577765` |
+| Ulls i detalls foscos | Marró gairebé negre | `#2A1B0F` |
+
+### Jerarquia de color
+
+1. **Taronja:** identitat principal de Piu i primer color que s'ha de percebre.
+2. **Verd:** segon color protagonista de la marca i dels accessoris.
+3. **Gris blavós:** tret natural distintiu entre el pit i les ales.
+4. **Marró i crema:** base natural del personatge.
+5. **Colors propis dels objectes:** es mantenen quan són fàcilment recognoscibles.
+
+### Regles per als accessoris
+
+- El verd és el color predeterminat dels accessoris sense un color propi evident.
+- Llibre, llibreta, agenda, motxilla, barret, bufanda, manta, tassa o cronòmetre poden ser verds.
+- El verd ha de ser mitjà o lleugerament apagat perquè no competeixi amb el pit taronja.
+- Els objectes amb un color típic mantenen aquest color: llapis groc, medalla daurada, xocolata marró o confeti variat.
+- Els accessoris complementen l'acció o l'emoció, però no poden ocultar la silueta ni els trets identificadors de Piu.
+
+### Trets que no poden canviar entre variants
+
+- Forma general rodona i compacta.
+- Cap integrat amb el cos.
+- Pit i cara taronja.
+- Franja gris blavosa lateral.
+- Dors i ales marrons.
+- Ventre crema.
+- Ulls grans amb un sol punt de llum.
+- Bec petit i triangular.
+- Proporció general entre cap, cos, ales i potes.
+- Estil flat amb ombres suaus.
+
+## 1.3. Guia visual mínima pendent
 
 Crear un document breu amb:
 
-- [ ] colors exactes en HEX;
-- [ ] proporcions del cos;
-- [ ] mida i posició dels ulls;
-- [ ] forma del bec;
-- [ ] forma del pit taronja;
-- [ ] tipus d'ombres;
-- [ ] gruix de línia, si n'hi ha;
-- [ ] expressions que encaixen amb el personatge;
-- [ ] expressions o deformacions que s'han d'evitar;
-- [ ] marge de seguretat al voltant del personatge.
+- [ ] validar els colors definitius en HEX a partir del model final;
+- [ ] fixar les proporcions exactes del cos en una graella;
+- [ ] fixar la mida i posició exactes dels ulls;
+- [ ] fixar la forma definitiva del bec;
+- [ ] fixar el contorn definitiu del pit taronja;
+- [ ] fixar la forma i amplada de la franja gris blavosa;
+- [ ] concretar el sistema d'ombres;
+- [ ] definir el gruix de línia, si finalment n'hi ha;
+- [ ] definir expressions que encaixen amb el personatge;
+- [ ] definir expressions o deformacions que s'han d'evitar;
+- [ ] establir el marge de seguretat al voltant del personatge.
 
-## 1.3. Formats i estructura d'arxius
+## 1.4. Formats i estructura d'arxius
 
 - [ ] Crear una carpeta específica: `public/mascota/piu/`.
 - [ ] Desar cada postura com una imatge independent.
@@ -470,7 +559,8 @@ Les primeres animacions han de ser subtils i reutilitzables.
 
 - [ ] Validar aquest document.
 - [ ] Tancar el disseny base de Piu.
-- [ ] Definir colors, proporcions i estil.
+- [x] Definir la direcció general de colors, proporcions i estil.
+- [ ] Fixar els valors i proporcions exactes en el full de personatge.
 - [ ] Decidir la ubicació de la mascota dins la interfície.
 
 ## Fase 2 · Paquet visual MVP
