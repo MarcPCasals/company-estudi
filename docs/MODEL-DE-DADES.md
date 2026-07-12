@@ -8,6 +8,8 @@ Aquest model cobreix el nucli funcional sense decidir encara la interfície visu
 classes/{classId}
   subjects/{subjectId}
   rooms/{subjectId}
+  taskCandidates/{candidateId}
+  officialTasks/{officialTaskId}
   students/{studentId}
     tasks/{taskId}
     studySessions/{sessionId}
@@ -40,9 +42,18 @@ permisos i comportaments diferents.
 
 ### Tasca
 
-Pertany a un alumne i referencia una assignatura. Conté la descripció, el tipus,
-l'origen, l'estat i el termini. El tipus, l'origen i els estats es concretaran en
-el punt següent del checklist.
+El sistema separa tres registres diferents:
+
+- `personal_task`: pertany a un alumne, viu dins de `students/{studentId}/tasks`
+  i pot contenir una nota privada.
+- `community_candidate`: és una coincidència agregada encara no confirmada. Viu
+  a `taskCandidates` i no conté identitats ni notes privades.
+- `official_task`: la confirma el tutor i viu a `officialTasks`. Que sigui oficial
+  no l'afegeix automàticament al calendari personal de l'alumne.
+
+Tots tres referencien una assignatura i poden descriure un termini, però no són
+intercanviables. Una proposta només esdevé oficial mitjançant una acció del tutor,
+i l'alumne decideix si incorpora la tasca oficial al seu espai personal.
 
 ### Termini
 
@@ -66,4 +77,6 @@ tutor només podrà veure un resum de disponibilitat, mai el detall.
 - Les ocupacions personals queden dins de l'espai privat de l'alumne.
 - El tutor pot veure tasques i sessions necessàries per a l'acompanyament.
 - Les sales són comunitàries per als membres de la classe.
+- Les propostes comunitàries no conserven la identitat de qui ha creat tasques semblants.
+- Una tasca oficial no modifica automàticament el calendari personal.
 - Els codis i verificadors d'accés viuen fora de l'arbre llegible pels alumnes.
