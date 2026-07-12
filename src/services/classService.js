@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore'
 import { createClassCode } from '../domain/accessCodes.js'
 import { DEFAULT_SUBJECTS } from '../data/subjects.js'
+import { resolveSyncState } from '../domain/offlinePolicy.js'
 import { auth, db } from '../lib/firebase.js'
 
 const requireFirebaseService = (service, label) => {
@@ -86,10 +87,22 @@ export const observeTutorClasses = (tutorId, onClasses, onError) => {
     where('tutorId', '==', tutorId),
   )
 
-  return onSnapshot(classesQuery, (snapshot) => {
+  return onSnapshot(classesQuery, { includeMetadataChanges: true }, (snapshot) => {
     const classes = snapshot.docs
       .map((document) => ({ id: document.id, ...document.data() }))
       .sort((left, right) => left.name.localeCompare(right.name, 'ca'))
-    onClasses(classes)
+    onClasses(classes, {
+      state: resolveSyncState({
+        online: globalThis.navigator?.onLine ?? true,
+        fromCache: snapshot.metadata.fromCache,
+        hasPendingWrites: snapshot.docs.some(
+          (document) => document.metadata.hasPendingWrites,
+        ),
+      }),
+      fromCache: snapshot.metadata.fromCache,
+      hasPendingWrites: snapshot.docs.some(
+        (document) => document.metadata.hasPendingWrites,
+      ),
+    })
   }, onError)
 }

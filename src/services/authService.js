@@ -45,7 +45,10 @@ export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => 
   }
 }
 
-export const signOutCurrentUser = () => signOut(requireAuth())
+export const signOutCurrentUser = async () => {
+  await signOut(requireAuth())
+  globalThis.location?.reload()
+}
 
 export const observeCurrentUser = (listener) =>
   onAuthStateChanged(requireAuth(), listener)

@@ -24,6 +24,14 @@ import {
   createTutorClass,
   observeTutorClasses,
 } from './services/classService.js'
+import { SYNC_STATE } from './domain/offlinePolicy.js'
+import {
+  clearOfflineDataAndDisable,
+  enableTrustedDevicePersistence,
+  getOfflinePersistencePreference,
+  observeConnectivity,
+  synchronizePendingWrites,
+} from './services/offlineService.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -41,6 +49,84 @@ function DetailList({ entries }) {
         </div>
       ))}
     </dl>
+  )
+}
+
+const SYNC_LABELS = {
+  [SYNC_STATE.OFFLINE]: 'Sense connexió',
+  [SYNC_STATE.CACHED]: 'Còpia local',
+  [SYNC_STATE.PENDING]: 'Canvis pendents',
+  [SYNC_STATE.SYNCED]: 'Sincronitzat',
+}
+
+function OfflineStatusPanel() {
+  const [online, setOnline] = useState(globalThis.navigator?.onLine ?? true)
+  const [persistent, setPersistent] = useState(getOfflinePersistencePreference())
+  const [status, setStatus] = useState({ state: 'idle', message: '' })
+
+  useEffect(() => observeConnectivity(setOnline), [])
+
+  const enable = () => {
+    setStatus({ state: 'loading', message: 'Activant la còpia local…' })
+    try {
+      enableTrustedDevicePersistence()
+      setPersistent(true)
+    } catch (error) {
+      setStatus({ state: 'error', message: error.message })
+    }
+  }
+
+  const disable = async () => {
+    setStatus({ state: 'loading', message: 'Comprovant i esborrant la còpia local…' })
+    try {
+      await clearOfflineDataAndDisable()
+      setPersistent(false)
+    } catch (error) {
+      setStatus({ state: 'error', message: error.message })
+    }
+  }
+
+  const synchronize = async () => {
+    setStatus({ state: 'loading', message: 'Comprovant canvis pendents…' })
+    try {
+      await synchronizePendingWrites()
+      setStatus({ state: 'success', message: 'Tots els canvis estan sincronitzats.' })
+    } catch (error) {
+      setStatus({ state: 'error', message: error.message })
+    }
+  }
+
+  return (
+    <section className="offline-panel" aria-labelledby="offline-title">
+      <div>
+        <p className="eyebrow">Connexió i recuperació</p>
+        <h2 id="offline-title">Treball sense connexió</h2>
+        <p>
+          {persistent
+            ? 'Aquest dispositiu conserva una còpia local i sincronitza els canvis quan torna la connexió.'
+            : 'La còpia local permanent està desactivada. Activa-la només en un dispositiu propi o assignat.'}
+        </p>
+      </div>
+      <span className={`sync-badge ${online ? 'synced' : 'offline'}`} role="status">
+        {online ? 'Amb connexió' : 'Sense connexió'}
+      </span>
+      <div className="offline-actions">
+        {!persistent && <button type="button" onClick={enable}>Activa en aquest dispositiu</button>}
+        {persistent && (
+          <>
+            <button type="button" onClick={synchronize} disabled={!online || status.state === 'loading'}>
+              Comprova la sincronització
+            </button>
+            <button type="button" className="secondary" onClick={disable} disabled={status.state === 'loading'}>
+              Esborra la còpia local
+            </button>
+          </>
+        )}
+      </div>
+      {status.message && (
+        <p className={`form-status ${status.state}`} role="status">{status.message}</p>
+      )}
+    </section>
   )
 }
 
@@ -207,10 +293,14 @@ function ClassManager({ tutorId }) {
   const [course, setCourse] = useState('')
   const [status, setStatus] = useState({ state: 'idle', message: '' })
   const [createdClass, setCreatedClass] = useState(null)
+  const [syncState, setSyncState] = useState(SYNC_STATE.CACHED)
 
   useEffect(() => observeTutorClasses(
     tutorId,
-    setClasses,
+    (nextClasses, syncMetadata) => {
+      setClasses(nextClasses)
+      setSyncState(syncMetadata.state)
+    },
     () => setStatus({ state: 'error', message: 'No hem pogut carregar les classes.' }),
   ), [tutorId])
 
@@ -242,6 +332,7 @@ function ClassManager({ tutorId }) {
           {showForm ? 'Cancel·la' : 'Crea una classe'}
         </button>
       </div>
+      <p className={`class-sync-state ${syncState}`}>{SYNC_LABELS[syncState]}</p>
 
       {showForm && (
         <form className="class-creator" onSubmit={submit}>
@@ -485,6 +576,8 @@ export default function App() {
           <strong>{isFirebaseConfigured ? `configurat · ${firebaseProjectId}` : 'pendent'}</strong>
         </p>
       </header>
+
+      <OfflineStatusPanel />
 
       <nav className="mode-switcher" aria-label="Canvia la vista de privacitat">
         {[

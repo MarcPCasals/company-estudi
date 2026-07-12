@@ -266,6 +266,79 @@ button:focus-visible {
   font-size: 0.9rem;
 }
 
+.offline-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: white;
+}
+
+.offline-panel h2,
+.offline-panel p {
+  margin-top: 0;
+}
+
+.offline-panel h2 {
+  margin-bottom: 0.4rem;
+  font-size: 1.05rem;
+}
+
+.offline-panel p:not(.eyebrow, .form-status) {
+  margin-bottom: 0;
+  color: #53627a;
+}
+
+.offline-actions,
+.offline-panel .form-status {
+  grid-column: 1 / -1;
+}
+
+.offline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.sync-badge,
+.class-sync-state {
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.sync-badge.synced,
+.class-sync-state.synced {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.sync-badge.offline,
+.class-sync-state.offline {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.class-sync-state.cached {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+.class-sync-state.pending {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.class-sync-state {
+  margin: 0.75rem 0 0;
+}
+
 .mode-switcher {
   display: flex;
   flex-wrap: wrap;
@@ -375,5 +448,9 @@ button:focus-visible {
   .detail-list > div {
     grid-template-columns: 1fr;
     gap: 0.1rem;
+  }
+
+  .offline-panel {
+    grid-template-columns: 1fr;
   }
 }

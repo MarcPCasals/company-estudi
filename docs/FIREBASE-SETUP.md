@@ -71,6 +71,27 @@ següent. Les Rules deixen d'acceptar automàticament l'UID anterior.
 El projecte no té facturació vinculada. Si algun servei arribés a la seva quota
 gratuïta, quedaria limitat fins que la quota es renovés; no generaria un cobrament.
 
+## Connexió, persistència i recuperació
+
+Al web, la persistència entre sessions només s'activa amb consentiment explícit
+en un dispositiu propi o assignat. En dispositius compartits s'utilitza memòria
+temporal i les dades desapareixen en tancar la sessió del navegador.
+
+Quan la persistència està activa:
+
+- Firestore conserva localment les dades que l'usuari ja ha consultat.
+- Les escriptures locals es mostren immediatament i queden pendents si no hi ha xarxa.
+- En recuperar la connexió, Firebase les sincronitza automàticament.
+- La interfície diferencia còpia local, canvis pendents i dades sincronitzades.
+- Abans d'esborrar la còpia local, l'aplicació exigeix connexió i espera que les
+  escriptures pendents hagin arribat al servidor.
+- En tancar la sessió sense persistència, la pàgina es recarrega i elimina la
+  memòria temporal de la sessió anterior.
+
+Els canvis atòmics que no necessiten lectures prèvies s'implementaran amb lots
+d'escriptura, perquè es poden posar a la cua sense connexió. Les transaccions es
+reservaran per a operacions que exigeixen dades actualitzades i requeriran xarxa.
+
 ## Variables d'entorn
 
 La configuració pública de Firebase és a `.env.example`. En local es copia a

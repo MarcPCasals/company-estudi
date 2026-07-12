@@ -1,6 +1,13 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
+import { isOfflinePersistenceEnabled } from '../domain/offlinePolicy.js'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,7 +30,22 @@ export const firebaseApp = isFirebaseConfigured
   : null
 
 export const auth = firebaseApp ? getAuth(firebaseApp) : null
-export const db = firebaseApp ? getFirestore(firebaseApp) : null
+export const offlinePersistenceRequested = isOfflinePersistenceEnabled()
+
+const initializeProjectFirestore = () => {
+  if (!firebaseApp) return null
+  try {
+    return initializeFirestore(firebaseApp, {
+      localCache: offlinePersistenceRequested
+        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        : memoryLocalCache(),
+    })
+  } catch {
+    return getFirestore(firebaseApp)
+  }
+}
+
+export const db = initializeProjectFirestore()
 export const firebaseProjectId = firebaseConfig.projectId ?? null
 
 export const getStudentProvisioningAuth = () => {
