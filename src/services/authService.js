@@ -4,7 +4,8 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth'
-import { auth } from '../lib/firebase.js'
+import { httpsCallable } from 'firebase/functions'
+import { auth, functions } from '../lib/firebase.js'
 
 const requireAuth = () => {
   if (!auth) {
@@ -20,7 +21,20 @@ export const signInTutorWithGoogle = async () => {
 }
 
 export const beginAnonymousStudentSession = () =>
-  signInAnonymously(requireAuth())
+  auth?.currentUser?.isAnonymous
+    ? Promise.resolve({ user: auth.currentUser })
+    : signInAnonymously(requireAuth())
+
+export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => {
+  await beginAnonymousStudentSession()
+
+  if (!functions) {
+    throw new Error('Firebase Functions no està configurat en aquest entorn.')
+  }
+
+  const exchangeCodes = httpsCallable(functions, 'exchangeStudentCodes')
+  const result = await exchangeCodes({ classCode, studentCode })
+  return result.data
+}
 
 export const signOutCurrentUser = () => signOut(requireAuth())
-

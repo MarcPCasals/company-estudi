@@ -38,6 +38,7 @@ service cloud.firestore {
       return signedInAnonymously()
         && sessionExists()
         && sessionData().active == true
+        && sessionData().expiresAt > request.time
         && sessionData().classId == classId
         && sessionData().studentId == studentId
         && exists(
@@ -198,6 +199,10 @@ service cloud.firestore {
     }
 
     match /accessCredentials/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /accessAttempts/{document=**} {
       allow read, write: if false;
     }
 

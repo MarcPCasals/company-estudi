@@ -15,6 +15,7 @@ La primera base funcional implementa:
 - configuració de Firebase mitjançant variables d'entorn;
 - autenticació de tutor amb Google i sessió tècnica anònima per a l'alumne;
 - unes Firestore Rules inicials, tancades per defecte.
+- una funció segura d'intercanvi de codis, preparada per desplegar.
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 
@@ -36,4 +37,4 @@ npm run build
 
 ## Seguretat
 
-La sessió anònima de Firebase no dona accés per si sola a les dades d'un alumne. Una Cloud Function haurà de verificar els codis, guardar-ne només verificadors segurs i crear una sessió autoritzada. No s'han d'utilitzar dades reals fins que aquest flux i les Rules estiguin provats amb l'emulador.
+La sessió anònima de Firebase no dona accés per si sola a les dades d'un alumne. La Cloud Function verifica els codis, en guarda només resums segurs i crea una sessió autoritzada amb caducitat. El seu desplegament requereix activar el pla Blaze i crear el secret `CODE_PEPPER`, tal com explica [docs/FIREBASE-SETUP.md](docs/FIREBASE-SETUP.md). No s'han d'utilitzar dades reals fins que aquest flux i les Rules estiguin provats amb l'emulador.

@@ -14,6 +14,7 @@ import {
   firebaseProjectId,
   isFirebaseConfigured,
 } from './lib/firebase.js'
+import { exchangeStudentAccessCodes } from './services/authService.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -174,6 +175,88 @@ function CredentialDemo() {
   )
 }
 
+const studentAccessErrorMessage = (error) => {
+  const code = String(error?.code ?? '')
+  if (code.includes('resource-exhausted')) {
+    return 'Has fet massa intents. Espera deu minuts i torna-ho a provar.'
+  }
+  if (code.includes('permission-denied')) {
+    return 'Els codis no són correctes o ja no són vàlids.'
+  }
+  return 'No hem pogut validar els codis. Comprova la connexió i torna-ho a provar.'
+}
+
+function StudentAccessForm() {
+  const [classCode, setClassCode] = useState('')
+  const [studentCode, setStudentCode] = useState('')
+  const [status, setStatus] = useState({ state: 'idle', message: '' })
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setStatus({ state: 'loading', message: 'Comprovant els codis…' })
+
+    try {
+      const session = await exchangeStudentAccessCodes({ classCode, studentCode })
+      setStatus({
+        state: 'success',
+        message: `Accés validat. La sessió és vàlida fins al ${formatDeadline(session.expiresAt)}.`,
+      })
+    } catch (error) {
+      setStatus({ state: 'error', message: studentAccessErrorMessage(error) })
+    }
+  }
+
+  return (
+    <section className="panel" aria-labelledby="student-access-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Accés real de l’alumne</p>
+          <h2 id="student-access-title">Entra al teu espai</h2>
+        </div>
+      </div>
+
+      <form className="access-form" onSubmit={submit}>
+        <label>
+          Codi de classe
+          <input
+            autoComplete="off"
+            inputMode="text"
+            maxLength={7}
+            required
+            value={classCode}
+            onChange={(event) => setClassCode(event.target.value.toUpperCase())}
+            placeholder="ABCDE"
+          />
+        </label>
+        <label>
+          Codi personal
+          <input
+            autoComplete="off"
+            inputMode="text"
+            maxLength={11}
+            required
+            value={studentCode}
+            onChange={(event) => setStudentCode(event.target.value.toUpperCase())}
+            placeholder="ABCD-2345"
+          />
+        </label>
+        <button type="submit" disabled={status.state === 'loading'}>
+          {status.state === 'loading' ? 'Comprovant…' : 'Entrar'}
+        </button>
+      </form>
+
+      {status.message && (
+        <p className={`form-status ${status.state}`} role="status">
+          {status.message}
+        </p>
+      )}
+      <p className="helper-text">
+        Els codis es comproven al servidor i no es poden consultar des del navegador.
+      </p>
+    </section>
+  )
+}
+
 export default function App() {
   const [mode, setMode] = useState('student')
 
@@ -211,7 +294,10 @@ export default function App() {
 
       <div className="layout">
         <ProfilePreview mode={mode} />
-        <CredentialDemo />
+        <div className="panel-stack">
+          <StudentAccessForm />
+          <CredentialDemo />
+        </div>
       </div>
     </main>
   )

@@ -57,6 +57,36 @@ El navegador no validarà directament `codi de classe + codi personal` contra un
 4. La funció crea `studentSessions/{uid}` amb `classId`, `studentId`, `credentialVersion` i `active`.
 5. Les Rules comproven aquesta sessió en cada accés.
 
+La funció `exchangeStudentCodes`, situada a `functions/src/index.js`, ja implementa
+aquest intercanvi. També limita els intents fallits a cinc cada deu minuts i crea
+sessions amb una durada màxima de trenta dies.
+
+Les credencials del servidor seguiran aquesta estructura, sempre amb resums HMAC
+i mai amb els codis originals:
+
+```text
+accessCredentials/{classCodeDigest}
+  classId
+  active
+  students/{studentCodeDigest}
+    studentId
+    credentialVersion
+    active
+```
+
+## Cloud Functions i pla Blaze
+
+El desplegament de Cloud Functions i l'ús de Secret Manager requereixen que el
+projecte estigui vinculat al pla Blaze. Un cop activat:
+
+```bash
+openssl rand -hex 32 | npx firebase-tools functions:secrets:set CODE_PEPPER --data-file=- --project company-estudi
+npx firebase-tools deploy --only functions:exchangeStudentCodes --project company-estudi
+```
+
+`CODE_PEPPER` és un secret exclusiu del servidor. No s'ha de copiar a `.env`, al
+frontend, a GitHub ni a cap document compartit.
+
 `accessCredentials` i l'escriptura de `studentSessions` estan bloquejats als clients. Les Cloud Functions amb Admin SDK no depenen de les Firestore Rules.
 
 ## Variables d'entorn
@@ -64,4 +94,3 @@ El navegador no validarà directament `codi de classe + codi personal` contra un
 La configuració pública de l'app és a `.env.example`. Copia-la a `.env.local` per desenvolupar. `.env.local` queda exclòs de Git.
 
 La configuració web de Firebase identifica el projecte però no substitueix les Rules, l'autenticació ni App Check. No s'hi han de posar claus de comptes de servei, claus de servidor ni altres secrets.
-

@@ -40,7 +40,7 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 - [ ] Modelar classes, alumnes, assignatures, tasques, sessions, terminis, ocupacions i sales.
 - [ ] Separar tasca personal, proposta comunitària i tasca oficial.
 - [ ] Definir estats i historial de canvis.
-- [ ] Aplicar permisos a la base de dades, no només a la interfície.
+- [x] Aplicar permisos a la base de dades, no només a la interfície.
 - [ ] Preparar sincronització, recuperació i funcionament amb mala connexió.
 - [ ] Configurar proves i desplegament.
 
