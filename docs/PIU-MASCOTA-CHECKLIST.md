@@ -33,12 +33,13 @@
 ## 1.1. Tancar el disseny definitiu de Piu
 
 - [ ] Seleccionar una única versió base del personatge.
-- [x] Definir les proporcions generals del cap, cos, ales, potes, bec i ulls.
+- [x] Definir les proporcions generals del cap, cos, ales, cua, potes, bec i ulls.
 - [x] Simplificar les formes perquè sigui una mascota rodona, icònica i llegible en mides petites.
 - [x] Definir la jerarquia de la paleta cromàtica principal.
 - [x] Definir l'estil d'ombres: flat amb ombres molt suaus.
 - [x] Evitar textures detallades de plomes i altres detalls petits.
-- [x] Escollir la vista frontal o tres quarts com a postura principal.
+- [x] Escollir la vista en tres quarts frontal com a postura principal.
+- [x] Definir la forma general de la cara i l'expressió neutral.
 - [ ] Comprovar que es reconegui bé a 32 × 32 px.
 - [ ] Comprovar que no s'assembli excessivament a Duo de Duolingo.
 
@@ -53,17 +54,39 @@ Aquesta secció recull les decisions que s'han de mantenir en totes les il·lust
 - El cap queda integrat amb el cos, sense coll visible.
 - El cap és lleugerament gran respecte del cos per afavorir l'expressivitat.
 - La silueta s'ha de poder reconèixer fins i tot sense colors ni accessoris.
-- La postura principal és frontal o en tres quarts, amb una lleugera inclinació que transmeti atenció.
+- La postura principal és en **tres quarts frontal**, amb una lleugera inclinació que transmeti atenció i permeti veure la cara, el pit, una ala i la cua.
 
 ### Proporcions i anatomia simplificada
 
+- El cos ocupa aproximadament el **70% de l'alçada visual** del personatge.
+- El cos és molt rodó i compacte, lleugerament més ample a la base.
+- El cap queda integrat dins del cos, sense coll visible.
 - Ulls grans i expressius, però no desproporcionats.
 - Ulls lleugerament ovalats, separats i amb pupil·la fosca i un únic punt de llum.
 - Bec petit, curt, triangular i amable; mai llarg ni punxegut.
-- Ales curtes, arrodonides i enganxades al cos.
-- Potes curtes, fines i molt simples.
+- Ales curtes, arrodonides i enganxades al cos; només s'allarguen visualment quan gesticula.
+- Potes curtes, fines i molt simples, equivalents aproximadament al **10–12% de l'alçada total**, amb tres dits simplificats.
+- Cua visible, estreta i relativament llarga, formada per **dues o tres plomes grans**.
+- En repòs, la cua surt cap a un lateral i lleugerament cap avall.
+- La cua equival aproximadament al **30–35% de l'amplada del cos**.
+- La posició de la cua pot reforçar l'emoció: més aixecada quan està actiu, baixa quan està cansat i més oberta quan celebra.
 - Sense textura detallada de plomes, urpes realistes ni anatomia complexa.
 - Les celles no són permanents: només apareixen quan una emoció concreta les necessita.
+- Piu manté un **petit floc de tres plomes curtes i arrodonides al cap** com a tret distintiu de silueta.
+
+### Cara i expressió neutral
+
+- Ulls grans, ovalats i lleugerament verticals, situats a la meitat superior de la cara.
+- Els ulls estan prou separats perquè Piu sembli proper i atent, i miren lleugerament cap al centre per connectar amb l'alumne.
+- En vista de tres quarts, l'ull més allunyat és discretament més petit per donar profunditat.
+- La pupil·la és gairebé negra i incorpora **un únic reflex blanc clar**.
+- La part superior dels ulls pot quedar lleugerament coberta pel plomatge del cap.
+- El bec és petit, curt i de triangle arrodonit; la part superior és més fosca i la inferior una mica més clara.
+- En l'estat neutral, el bec queda tancat o suggereix un somriure molt subtil.
+- Quan parla o celebra, el bec s'obre poc; no ha de funcionar com una boca humana exagerada.
+- L'expressió neutral transmet: **«Estic aquí. Què fem ara?»**
+- Sense celles visibles en repòs. Quan apareixen, són fines i suaus: aixecades per sorpresa, inclinades per preocupació, una sola aixecada per curiositat i baixes per cansament.
+- Evitar mirades agressives, somriures massa amplis i gestos excessivament infantils.
 
 ### Distribució del plomatge
 
@@ -126,7 +149,10 @@ Els valors següents són orientatius fins que s'extreguin i es validin els colo
 - Ventre crema.
 - Ulls grans amb un sol punt de llum.
 - Bec petit i triangular.
-- Proporció general entre cap, cos, ales i potes.
+- Proporció general entre cap, cos, ales, cua i potes.
+- Cua allargada de dues o tres plomes, visible en la silueta.
+- Petit floc de tres plomes al cap.
+- Expressió neutral atenta i amable, sense celles permanents.
 - Estil flat amb ombres suaus.
 
 ## 1.3. Guia visual mínima pendent
@@ -134,9 +160,12 @@ Els valors següents són orientatius fins que s'extreguin i es validin els colo
 Crear un document breu amb:
 
 - [ ] validar els colors definitius en HEX a partir del model final;
+- [x] definir les proporcions orientatives del cos, la cua i les potes;
 - [ ] fixar les proporcions exactes del cos en una graella;
-- [ ] fixar la mida i posició exactes dels ulls;
-- [ ] fixar la forma definitiva del bec;
+- [x] definir la forma, orientació i comportament general dels ulls;
+- [x] definir la forma i comportament general del bec;
+- [ ] fixar la mida i posició exactes dels ulls en una graella;
+- [ ] fixar les dimensions exactes del bec en una graella;
 - [ ] fixar el contorn definitiu del pit taronja;
 - [ ] fixar la forma i amplada de la franja gris blavosa;
 - [ ] concretar el sistema d'ombres;
