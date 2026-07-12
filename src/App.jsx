@@ -10,6 +10,10 @@ import {
   getTutorProfileView,
 } from './domain/profileViews.js'
 import { demoProfile } from './data/demoProfile.js'
+import {
+  firebaseProjectId,
+  isFirebaseConfigured,
+} from './lib/firebase.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -181,6 +185,10 @@ export default function App() {
         <p>
           Aquesta pantalla valida què veu cada rol. No és el disseny visual definitiu de l’aplicació.
         </p>
+        <p className="firebase-status" role="status">
+          Firebase:{' '}
+          <strong>{isFirebaseConfigured ? `configurat · ${firebaseProjectId}` : 'pendent'}</strong>
+        </p>
       </header>
 
       <nav className="mode-switcher" aria-label="Canvia la vista de privacitat">
@@ -208,4 +216,3 @@ export default function App() {
     </main>
   )
 }
-

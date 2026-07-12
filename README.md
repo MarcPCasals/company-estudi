@@ -11,7 +11,10 @@ La primera base funcional implementa:
 - projeccions de perfil perquè el tutor i la comunitat no rebin camps privats;
 - codis d'accés aleatoris i regenerables;
 - invalidació de sessions anteriors mitjançant versions de credencial;
-- una pantalla mínima per comparar les vistes d'alumne, tutor i comunitat.
+- una pantalla mínima per comparar les vistes d'alumne, tutor i comunitat;
+- configuració de Firebase mitjançant variables d'entorn;
+- autenticació de tutor amb Google i sessió tècnica anònima per a l'alumne;
+- unes Firestore Rules inicials, tancades per defecte.
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 
@@ -22,6 +25,8 @@ npm install
 npm run dev
 ```
 
+La configuració pública de Firebase és a `.env.example`. Per al flux complet d'autenticació i Firestore, consulta [docs/FIREBASE-SETUP.md](docs/FIREBASE-SETUP.md).
+
 ## Comprovacions
 
 ```bash
@@ -31,5 +36,4 @@ npm run build
 
 ## Seguretat
 
-La lògica actual és una base de domini. Abans d'utilitzar dades reals cal connectar un servei d'autenticació i persistència, guardar verificadors segurs dels codis i aplicar les mateixes regles al servidor o a la base de dades.
-
+La sessió anònima de Firebase no dona accés per si sola a les dades d'un alumne. Una Cloud Function haurà de verificar els codis, guardar-ne només verificadors segurs i crear una sessió autoritzada. No s'han d'utilitzar dades reals fins que aquest flux i les Rules estiguin provats amb l'emulador.

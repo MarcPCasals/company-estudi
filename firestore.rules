@@ -1,0 +1,208 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function signedInWithGoogle() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+
+    function signedInAnonymously() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    function sessionExists() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/studentSessions/$(request.auth.uid));
+    }
+
+    function sessionData() {
+      return get(
+        /databases/$(database)/documents/studentSessions/$(request.auth.uid)
+      ).data;
+    }
+
+    function isTutor(classId) {
+      return signedInWithGoogle()
+        && exists(/databases/$(database)/documents/classes/$(classId))
+        && get(/databases/$(database)/documents/classes/$(classId)).data.tutorId
+          == request.auth.uid;
+    }
+
+    function hasCurrentStudentSession(classId, studentId) {
+      return signedInAnonymously()
+        && sessionExists()
+        && sessionData().active == true
+        && sessionData().classId == classId
+        && sessionData().studentId == studentId
+        && exists(
+          /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
+        )
+        && get(
+          /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
+        ).data.active == true
+        && get(
+          /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
+        ).data.credentialVersion == sessionData().credentialVersion;
+    }
+
+    function isClassStudent(classId) {
+      return sessionExists()
+        && hasCurrentStudentSession(classId, sessionData().studentId);
+    }
+
+    function ownsIncomingStudentData(classId, studentId) {
+      return request.resource.data.classId == classId
+        && request.resource.data.ownerStudentId == studentId;
+    }
+
+    function keepsStudentOwnership(classId, studentId) {
+      return ownsIncomingStudentData(classId, studentId)
+        && request.resource.data.classId == resource.data.classId
+        && request.resource.data.ownerStudentId == resource.data.ownerStudentId;
+    }
+
+    match /classes/{classId} {
+      allow create: if signedInWithGoogle()
+        && request.resource.data.tutorId == request.auth.uid;
+      allow read: if isTutor(classId) || isClassStudent(classId);
+      allow update: if isTutor(classId)
+        && request.resource.data.tutorId == resource.data.tutorId;
+      allow delete: if isTutor(classId);
+
+      match /students/{studentId} {
+        allow read: if isTutor(classId)
+          || hasCurrentStudentSession(classId, studentId);
+        allow create, update, delete: if isTutor(classId);
+
+        match /private/{document=**} {
+          allow read, write: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /tasks/{taskId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentSession(classId, studentId);
+          allow create: if hasCurrentStudentSession(classId, studentId)
+            && ownsIncomingStudentData(classId, studentId);
+          allow update: if hasCurrentStudentSession(classId, studentId)
+            && keepsStudentOwnership(classId, studentId);
+          allow delete: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /studySessions/{sessionId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentSession(classId, studentId);
+          allow create: if hasCurrentStudentSession(classId, studentId)
+            && ownsIncomingStudentData(classId, studentId);
+          allow update: if hasCurrentStudentSession(classId, studentId)
+            && keepsStudentOwnership(classId, studentId);
+          allow delete: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /personalSchedule/{eventId} {
+          allow read, write: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /availability/{summaryId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentSession(classId, studentId);
+          allow create: if hasCurrentStudentSession(classId, studentId)
+            && ownsIncomingStudentData(classId, studentId);
+          allow update: if hasCurrentStudentSession(classId, studentId)
+            && keepsStudentOwnership(classId, studentId);
+          allow delete: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /tutorialSubmissions/{submissionId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentSession(classId, studentId);
+          allow create: if hasCurrentStudentSession(classId, studentId)
+            && ownsIncomingStudentData(classId, studentId);
+          allow update: if hasCurrentStudentSession(classId, studentId)
+            && keepsStudentOwnership(classId, studentId);
+          allow delete: if hasCurrentStudentSession(classId, studentId);
+        }
+
+        match /tutorFeedback/{feedbackId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentSession(classId, studentId);
+          allow create: if isTutor(classId)
+            && request.resource.data.classId == classId
+            && request.resource.data.studentId == studentId
+            && request.resource.data.authorTutorId == request.auth.uid;
+          allow update: if isTutor(classId)
+            && resource.data.authorTutorId == request.auth.uid
+            && request.resource.data.authorTutorId == resource.data.authorTutorId
+            && request.resource.data.classId == resource.data.classId
+            && request.resource.data.studentId == resource.data.studentId;
+          allow delete: if isTutor(classId)
+            && resource.data.authorTutorId == request.auth.uid;
+        }
+      }
+
+      match /rooms/{roomId} {
+        allow read: if isTutor(classId) || isClassStudent(classId);
+        allow create, update, delete: if isTutor(classId);
+
+        match /posts/{postId} {
+          allow read: if isTutor(classId) || isClassStudent(classId);
+          allow create: if (
+              isTutor(classId)
+              && request.resource.data.authorRole == 'tutor'
+              && request.resource.data.authorTutorId == request.auth.uid
+            ) || (
+              isClassStudent(classId)
+              && request.resource.data.authorRole == 'student'
+              && request.resource.data.authorStudentId == sessionData().studentId
+            );
+          allow update: if isTutor(classId) || (
+            isClassStudent(classId)
+            && resource.data.authorRole == 'student'
+            && resource.data.authorStudentId == sessionData().studentId
+            && request.resource.data.authorStudentId == resource.data.authorStudentId
+            && request.resource.data.authorRole == resource.data.authorRole
+          );
+          allow delete: if isTutor(classId) || (
+            isClassStudent(classId)
+            && resource.data.authorRole == 'student'
+            && resource.data.authorStudentId == sessionData().studentId
+          );
+        }
+
+        match /reports/{reportId} {
+          allow create: if isClassStudent(classId)
+            && request.resource.data.reporterStudentId == sessionData().studentId;
+          allow read, update, delete: if isTutor(classId);
+        }
+      }
+
+      match /taskCandidates/{candidateId} {
+        allow read: if isTutor(classId);
+        allow write: if false;
+      }
+
+      match /aggregates/{aggregateId} {
+        allow read: if isTutor(classId);
+        allow write: if false;
+      }
+    }
+
+    match /studentSessions/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /accessCredentials/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
