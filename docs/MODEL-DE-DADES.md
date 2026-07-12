@@ -12,6 +12,7 @@ classes/{classId}
   officialTasks/{officialTaskId}
   students/{studentId}
     tasks/{taskId}
+      history/{historyId}
     studySessions/{sessionId}
     personalSchedule/{occupationId}
 
@@ -57,6 +58,29 @@ El sistema separa tres registres diferents:
 Tots tres referencien una assignatura i poden descriure un termini, però no són
 intercanviables. Una proposta només esdevé oficial mitjançant una acció del tutor,
 i l'alumne decideix si incorpora la tasca oficial al seu espai personal.
+
+### Estat i entrega
+
+L'estat de treball personal pot ser:
+
+- `needs_clarification`: falta concretar què s'ha de fer.
+- `pending`: està clar, però encara no s'ha planificat.
+- `planned`: té almenys una sessió prevista.
+- `in_progress`: l'alumne ja hi està treballant.
+- `done`: la feina està acabada.
+
+L'entrega és un camp separat: `not_required`, `not_delivered` o `delivered`.
+Marcar una tasca com `done` no la converteix automàticament en `delivered`.
+Una tasca feta es pot reobrir per revisar-la o reajustar-la.
+
+### Historial de canvis
+
+Cada tasca personal té una subcol·lecció `history`. Els esdeveniments registren
+creació, canvi d'estat, progrés, reprogramació, canvi de termini, entrega o
+petició d'ajuda. Només es poden afegir: no es poden editar ni esborrar.
+
+Reprogramar o tornar a un estat anterior és una evidència de regulació, no una
+penalització. Per això l'historial no conté puntuacions negatives.
 
 ### Termini
 

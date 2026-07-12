@@ -105,6 +105,18 @@ service cloud.firestore {
           allow update: if hasCurrentStudentAccess(classId, studentId)
             && keepsStudentOwnership(classId, studentId);
           allow delete: if hasCurrentStudentAccess(classId, studentId);
+
+          match /history/{historyId} {
+            allow read: if isTutor(classId)
+              || hasCurrentStudentAccess(classId, studentId);
+            allow create: if hasCurrentStudentAccess(classId, studentId)
+              && request.resource.data.classId == classId
+              && request.resource.data.ownerStudentId == studentId
+              && request.resource.data.taskId == taskId
+              && request.resource.data.actorRole == 'student'
+              && request.resource.data.actorId == studentId;
+            allow update, delete: if false;
+          }
         }
 
         match /studySessions/{sessionId} {
