@@ -43,9 +43,11 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 - [ ] Definir estats i historial de canvis.
 - [x] Aplicar permisos a la base de dades, no només a la interfície.
 - [ ] Preparar sincronització, recuperació i funcionament amb mala connexió.
-- [ ] Configurar proves i desplegament.
+- [x] Configurar proves i desplegament.
 
 ## 5. Creació de classe i incorporació
+
+> En progrés: la creació de classe, les assignatures, les sales i la base tècnica dels comptes d'alumne estan construïdes amb Spark, però encara falta validar el flux complet i crear la pantalla d'alta d'alumnes abans de marcar aquests punts.
 
 - [ ] Crear classe, assignatures i sales.
 - [ ] Afegir alumnes i generar codis.
