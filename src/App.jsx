@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createStudentCredential,
   isSessionAuthorized,
@@ -14,7 +14,12 @@ import {
   firebaseProjectId,
   isFirebaseConfigured,
 } from './lib/firebase.js'
-import { exchangeStudentAccessCodes } from './services/authService.js'
+import {
+  exchangeStudentAccessCodes,
+  observeCurrentUser,
+  signInTutorWithGoogle,
+  signOutCurrentUser,
+} from './services/authService.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -175,6 +180,92 @@ function CredentialDemo() {
   )
 }
 
+const tutorLoginErrorMessage = (error) => {
+  const code = String(error?.code ?? '')
+  if (code.includes('popup-closed-by-user')) return 'Has tancat la finestra de Google abans d’entrar.'
+  if (code.includes('unauthorized-domain')) return 'Aquest domini encara no està autoritzat a Firebase Authentication.'
+  if (code.includes('operation-not-allowed')) return 'Cal activar el proveïdor Google a Firebase Authentication.'
+  return 'No hem pogut iniciar la sessió amb Google. Torna-ho a provar.'
+}
+
+function TutorLoginPanel() {
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [status, setStatus] = useState({ state: 'idle', message: '' })
+
+  useEffect(() => observeCurrentUser((currentUser) => {
+    setUser(currentUser?.isAnonymous ? null : currentUser)
+    setAuthReady(true)
+  }), [])
+
+  const login = async () => {
+    setStatus({ state: 'loading', message: 'Obrint Google…' })
+    try {
+      await signInTutorWithGoogle()
+      setStatus({ state: 'success', message: 'Sessió de tutor iniciada correctament.' })
+    } catch (error) {
+      setStatus({ state: 'error', message: tutorLoginErrorMessage(error) })
+    }
+  }
+
+  const logout = async () => {
+    setStatus({ state: 'loading', message: 'Tancant la sessió…' })
+    try {
+      await signOutCurrentUser()
+      setStatus({ state: 'idle', message: '' })
+    } catch {
+      setStatus({ state: 'error', message: 'No hem pogut tancar la sessió.' })
+    }
+  }
+
+  return (
+    <section className="panel tutor-login" aria-labelledby="tutor-login-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Espai del tutor</p>
+          <h2 id="tutor-login-title">Accés del professorat</h2>
+        </div>
+        {user && <span className="status-badge ok">Sessió iniciada</span>}
+      </div>
+
+      {!authReady && <p className="helper-text">Comprovant la sessió…</p>}
+
+      {authReady && !user && (
+        <>
+          <p>Entra amb el teu compte de Google per crear i gestionar la classe.</p>
+          <button
+            type="button"
+            className="google-login-button"
+            disabled={status.state === 'loading'}
+            onClick={login}
+          >
+            <span aria-hidden="true" className="google-mark">G</span>
+            Continua amb Google
+          </button>
+        </>
+      )}
+
+      {user && (
+        <div className="signed-in-user">
+          {user.photoURL && <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />}
+          <div>
+            <strong>{user.displayName ?? 'Tutor'}</strong>
+            <span>{user.email}</span>
+          </div>
+          <button type="button" className="secondary" onClick={logout}>Tanca la sessió</button>
+          <p className="helper-text">
+            Ja pots continuar al següent pas: crear la classe i afegir-hi els alumnes.
+          </p>
+        </div>
+      )}
+
+      {status.message && (
+        <p className={`form-status ${status.state}`} role="status">{status.message}</p>
+      )}
+    </section>
+  )
+}
+
 const studentAccessErrorMessage = (error) => {
   const code = String(error?.code ?? '')
   if (code.includes('resource-exhausted')) {
@@ -295,6 +386,7 @@ export default function App() {
       <div className="layout">
         <ProfilePreview mode={mode} />
         <div className="panel-stack">
+          <TutorLoginPanel />
           <StudentAccessForm />
           <CredentialDemo />
         </div>

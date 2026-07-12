@@ -1,5 +1,6 @@
 import {
   GoogleAuthProvider,
+  onAuthStateChanged,
   signInAnonymously,
   signInWithPopup,
   signOut,
@@ -38,3 +39,6 @@ export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => 
 }
 
 export const signOutCurrentUser = () => signOut(requireAuth())
+
+export const observeCurrentUser = (listener) =>
+  onAuthStateChanged(requireAuth(), listener)

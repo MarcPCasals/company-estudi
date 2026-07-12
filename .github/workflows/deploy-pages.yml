@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - codex/access-privacy-foundation
   workflow_dispatch:
 
 permissions:

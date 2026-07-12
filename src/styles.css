@@ -38,6 +38,55 @@ button:disabled {
   gap: 1.5rem;
 }
 
+.google-login-button {
+  display: inline-flex;
+  gap: 0.7rem;
+  align-items: center;
+  color: #1f2937;
+  background: white;
+  border-color: #b8c1ce;
+}
+
+.google-mark {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #2563eb;
+  background: #eff6ff;
+  font-weight: 800;
+}
+
+.signed-in-user {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.signed-in-user img {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+}
+
+.signed-in-user div {
+  display: grid;
+  min-width: 0;
+}
+
+.signed-in-user span {
+  overflow-wrap: anywhere;
+  color: #53627a;
+  font-size: 0.9rem;
+}
+
+.signed-in-user button,
+.signed-in-user .helper-text {
+  grid-column: 1 / -1;
+}
+
 .access-form {
   display: grid;
   gap: 1rem;
