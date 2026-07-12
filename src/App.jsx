@@ -16,6 +16,7 @@ import {
 } from './lib/firebase.js'
 import {
   exchangeStudentAccessCodes,
+  loadCurrentStudentContext,
   observeCurrentUser,
   signInTutorWithGoogle,
   signOutCurrentUser,
@@ -32,6 +33,8 @@ import {
   observeConnectivity,
   synchronizePendingWrites,
 } from './services/offlineService.js'
+import ClassWorkspace from './components/ClassWorkspace.jsx'
+import StudentOnboarding from './components/StudentOnboarding.jsx'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -294,6 +297,7 @@ function ClassManager({ tutorId }) {
   const [status, setStatus] = useState({ state: 'idle', message: '' })
   const [createdClass, setCreatedClass] = useState(null)
   const [syncState, setSyncState] = useState(SYNC_STATE.CACHED)
+  const [selectedClassId, setSelectedClassId] = useState('')
 
   useEffect(() => observeTutorClasses(
     tutorId,
@@ -313,6 +317,7 @@ function ClassManager({ tutorId }) {
       setName('')
       setCourse('')
       setShowForm(false)
+      setSelectedClassId(result.classId)
       setStatus({ state: 'success', message: 'Classe creada correctament.' })
     } catch (error) {
       setStatus({ state: 'error', message: classCreationErrorMessage(error) })
@@ -378,12 +383,25 @@ function ClassManager({ tutorId }) {
       {classes.length > 0 && (
         <ul className="class-list">
           {classes.map((classroom) => (
-            <li key={classroom.id}>
-              <strong>{classroom.name}</strong>
-              <span>{classroom.course}</span>
+            <li key={classroom.id} className={selectedClassId === classroom.id ? 'selected' : ''}>
+              <div>
+                <strong>{classroom.name}</strong>
+                <span>{classroom.course}</span>
+              </div>
+              <button type="button" className="secondary" onClick={() => setSelectedClassId(classroom.id)}>
+                Gestiona
+              </button>
             </li>
           ))}
         </ul>
+      )}
+
+      {classes.find((classroom) => classroom.id === selectedClassId) && (
+        <ClassWorkspace
+          tutorId={tutorId}
+          classroom={classes.find((classroom) => classroom.id === selectedClassId)}
+          classes={classes}
+        />
       )}
 
       {status.message && (
@@ -493,6 +511,20 @@ function StudentAccessForm() {
   const [classCode, setClassCode] = useState('')
   const [studentCode, setStudentCode] = useState('')
   const [status, setStatus] = useState({ state: 'idle', message: '' })
+  const [session, setSession] = useState(null)
+
+  useEffect(() => observeCurrentUser((currentUser) => {
+    const isStudent = currentUser?.providerData.some(
+      (provider) => provider.providerId === 'password',
+    )
+    if (!isStudent) {
+      setSession(null)
+      return
+    }
+    loadCurrentStudentContext(currentUser)
+      .then(setSession)
+      .catch((error) => setStatus({ state: 'error', message: studentAccessErrorMessage(error) }))
+  }), [])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -500,6 +532,7 @@ function StudentAccessForm() {
 
     try {
       const session = await exchangeStudentAccessCodes({ classCode, studentCode })
+      setSession(session)
       setStatus({
         state: 'success',
         message: `Accés validat per a l’alumne ${session.studentId}.`,
@@ -507,6 +540,10 @@ function StudentAccessForm() {
     } catch (error) {
       setStatus({ state: 'error', message: studentAccessErrorMessage(error) })
     }
+  }
+
+  if (session) {
+    return <StudentOnboarding session={session} onLogout={signOutCurrentUser} />
   }
 
   return (
@@ -554,7 +591,7 @@ function StudentAccessForm() {
         </p>
       )}
       <p className="helper-text">
-        Els codis es comproven al servidor i no es poden consultar des del navegador.
+        Els codis es transformen en una credencial tècnica i només obren l’espai vinculat a aquest alumne.
       </p>
     </section>
   )

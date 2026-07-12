@@ -66,6 +66,21 @@ service cloud.firestore {
         && hasCurrentStudentAccess(classId, studentAccessData().studentId);
     }
 
+    function hasRoomAccess(classId, roomId) {
+      return isClassStudent(classId)
+        && exists(
+          /databases/$(database)/documents/classes/$(classId)/rooms/$(roomId)
+        )
+        && (
+          get(
+            /databases/$(database)/documents/classes/$(classId)/rooms/$(roomId)
+          ).data.memberMode != 'selected'
+          || studentAccessData().studentId in get(
+            /databases/$(database)/documents/classes/$(classId)/rooms/$(roomId)
+          ).data.memberStudentIds
+        );
+    }
+
     function ownsIncomingStudentData(classId, studentId) {
       return request.resource.data.classId == classId
         && request.resource.data.ownerStudentId == studentId;
@@ -177,37 +192,37 @@ service cloud.firestore {
       }
 
       match /rooms/{roomId} {
-        allow read: if isTutor(classId) || isClassStudent(classId);
+        allow read: if isTutor(classId) || hasRoomAccess(classId, roomId);
         allow create: if isTutorAfter(classId);
         allow update, delete: if isTutor(classId);
 
         match /posts/{postId} {
-          allow read: if isTutor(classId) || isClassStudent(classId);
+          allow read: if isTutor(classId) || hasRoomAccess(classId, roomId);
           allow create: if (
               isTutor(classId)
               && request.resource.data.authorRole == 'tutor'
               && request.resource.data.authorTutorId == request.auth.uid
             ) || (
-              isClassStudent(classId)
+              hasRoomAccess(classId, roomId)
               && request.resource.data.authorRole == 'student'
               && request.resource.data.authorStudentId == studentAccessData().studentId
             );
           allow update: if isTutor(classId) || (
-            isClassStudent(classId)
+            hasRoomAccess(classId, roomId)
             && resource.data.authorRole == 'student'
             && resource.data.authorStudentId == studentAccessData().studentId
             && request.resource.data.authorStudentId == resource.data.authorStudentId
             && request.resource.data.authorRole == resource.data.authorRole
           );
           allow delete: if isTutor(classId) || (
-            isClassStudent(classId)
+            hasRoomAccess(classId, roomId)
             && resource.data.authorRole == 'student'
             && resource.data.authorStudentId == studentAccessData().studentId
           );
         }
 
         match /reports/{reportId} {
-          allow create: if isClassStudent(classId)
+          allow create: if hasRoomAccess(classId, roomId)
             && request.resource.data.reporterStudentId == studentAccessData().studentId;
           allow read, update, delete: if isTutor(classId);
         }
@@ -230,7 +245,9 @@ service cloud.firestore {
       );
       allow create: if signedInWithGoogle()
         && isTutor(request.resource.data.classId)
-        && request.resource.data.studentId == uid;
+        && getAfter(
+          /databases/$(database)/documents/classes/$(request.resource.data.classId)/students/$(request.resource.data.studentId)
+        ).data.authUid == uid;
       allow update: if signedInWithGoogle()
         && isTutor(resource.data.classId)
         && request.resource.data.classId == resource.data.classId

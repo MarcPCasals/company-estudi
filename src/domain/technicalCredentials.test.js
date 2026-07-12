@@ -18,7 +18,7 @@ describe('credencials tècniques de l’alumne', () => {
     expect(first.password).toHaveLength(69)
   })
 
-  it('canvia les credencials quan se’n regenera la versió', async () => {
+  it('la versió invalida Firestore però no forma part dels codis visibles', async () => {
     const first = await deriveStudentCredentials({
       classCode: 'ABCDE',
       studentCode: 'ABCD2345',
@@ -28,6 +28,21 @@ describe('credencials tècniques de l’alumne', () => {
       classCode: 'ABCDE',
       studentCode: 'ABCD2345',
       credentialVersion: 2,
+    })
+
+    expect(rotated.email).toBe(first.email)
+    expect(rotated.password).toBe(first.password)
+    expect(rotated.credentialVersion).toBe(2)
+  })
+
+  it('canvia les credencials quan es regenera el codi personal', async () => {
+    const first = await deriveStudentCredentials({
+      classCode: 'ABCDE',
+      studentCode: 'ABCD2345',
+    })
+    const rotated = await deriveStudentCredentials({
+      classCode: 'ABCDE',
+      studentCode: 'EFGH6789',
     })
 
     expect(rotated.email).not.toBe(first.email)

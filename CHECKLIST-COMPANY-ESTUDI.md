@@ -47,15 +47,13 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 5. Creació de classe i incorporació
 
-> En progrés: la creació de classe, les assignatures, les sales i la base tècnica dels comptes d'alumne estan construïdes amb Spark, però encara falta validar el flux complet i crear la pantalla d'alta d'alumnes abans de marcar aquests punts.
-
-- [ ] Crear classe, assignatures i sales.
-- [ ] Afegir alumnes i generar codis.
-- [ ] Permetre optatives o sales amb membres diferents.
-- [ ] Crear el primer accés de l'alumne.
-- [ ] Explicar clarament què veu el tutor.
-- [ ] Configurar horari escolar, trajectes, extraescolars, descans i cap de setmana.
-- [ ] Gestionar codi perdut, canvi de dispositiu i canvi de classe.
+- [x] Crear classe, assignatures i sales.
+- [x] Afegir alumnes i generar codis.
+- [x] Permetre optatives o sales amb membres diferents.
+- [x] Crear el primer accés de l'alumne.
+- [x] Explicar clarament què veu el tutor.
+- [x] Configurar horari escolar, trajectes, extraescolars, descans i cap de setmana.
+- [x] Gestionar codi perdut, canvi de dispositiu i canvi de classe.
 
 ## 6. Deures, treballs i exàmens
 

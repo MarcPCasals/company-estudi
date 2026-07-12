@@ -30,7 +30,12 @@ export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => 
     credentials.email,
     credentials.password,
   )
-  const accessSnapshot = await getDoc(doc(db, 'studentAccess', result.user.uid))
+  return loadCurrentStudentContext(result.user)
+}
+
+export const loadCurrentStudentContext = async (user = auth?.currentUser) => {
+  if (!db || !user) return null
+  const accessSnapshot = await getDoc(doc(db, 'studentAccess', user.uid))
   const access = accessSnapshot.data()
 
   if (!accessSnapshot.exists() || access?.active !== true) {
@@ -38,10 +43,23 @@ export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => 
     throw new Error('Aquesta credencial no està vinculada a cap alumne actiu.')
   }
 
+  const [studentSnapshot, classSnapshot] = await Promise.all([
+    getDoc(doc(db, 'classes', access.classId, 'students', access.studentId)),
+    getDoc(doc(db, 'classes', access.classId)),
+  ])
+  if (!studentSnapshot.exists() || !classSnapshot.exists()) {
+    await signOut(requireAuth())
+    throw new Error('No s’ha trobat l’espai de l’alumne.')
+  }
+
   return {
     classId: access.classId,
     studentId: access.studentId,
     credentialVersion: access.credentialVersion,
+    displayName: studentSnapshot.data().displayName,
+    className: classSnapshot.data().name,
+    course: classSnapshot.data().course,
+    schoolSchedule: classSnapshot.data().schoolSchedule,
   }
 }
 

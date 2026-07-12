@@ -16,6 +16,8 @@ La primera base funcional implementa:
 - autenticació de tutor amb Google i comptes tècnics gratuïts per als alumnes;
 - unes Firestore Rules inicials, tancades per defecte.
 - arquitectura compatible amb el pla Spark, sense Cloud Functions ni facturació.
+- creació de classes, alumnes, codis, sales optatives i incorporació inicial;
+- regeneració de credencials i canvi de classe amb identitat d'alumne estable;
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 

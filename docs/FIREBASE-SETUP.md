@@ -60,6 +60,9 @@ tutors/{tutorId}/classSecrets/{classId}
 `classSecrets` només és accessible pel tutor propietari. Els alumnes no poden
 llegir els codis propis ni els dels companys des de Firestore.
 
+El document de l'alumne té un `studentId` estable i un `authUid` substituïble.
+Aquesta separació permet revocar o regenerar l'accés sense moure les seves dades.
+
 ## Regeneració i revocació
 
 La versió de la credencial forma part de la derivació tècnica. Quan es regenera

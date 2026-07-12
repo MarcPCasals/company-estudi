@@ -1,15 +1,18 @@
 import {
   doc,
   collection,
+  getDoc,
   serverTimestamp,
   setDoc,
   writeBatch,
   onSnapshot,
   query,
+  updateDoc,
   where,
 } from 'firebase/firestore'
 import { createClassCode } from '../domain/accessCodes.js'
 import { DEFAULT_SUBJECTS } from '../data/subjects.js'
+import { DEFAULT_SCHOOL_SCHEDULE } from '../data/defaultSchedule.js'
 import { resolveSyncState } from '../domain/offlinePolicy.js'
 import { auth, db } from '../lib/firebase.js'
 
@@ -42,6 +45,7 @@ export const createTutorClass = async ({ name, course }) => {
     course: cleanCourse,
     active: true,
     subjectIds: DEFAULT_SUBJECTS.map((subject) => subject.id),
+    schoolSchedule: DEFAULT_SCHOOL_SCHEDULE,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
@@ -67,6 +71,8 @@ export const createTutorClass = async ({ name, course }) => {
       name: subject.name,
       subjectId: subject.id,
       active: true,
+      memberMode: 'all',
+      memberStudentIds: [],
       createdAt: serverTimestamp(),
     })
   }
@@ -79,6 +85,89 @@ export const createTutorClass = async ({ name, course }) => {
     course: cleanCourse,
     subjectCount: DEFAULT_SUBJECTS.length,
   }
+}
+
+export const getTutorClassSecret = async ({ tutorId, classId }) => {
+  const snapshot = await getDoc(doc(
+    requireFirebaseService(db, 'Firestore'),
+    'tutors',
+    tutorId,
+    'classSecrets',
+    classId,
+  ))
+  return snapshot.exists() ? snapshot.data() : null
+}
+
+const observeSortedCollection = ({ path, sortField, onData, onError }) =>
+  onSnapshot(
+    collection(requireFirebaseService(db, 'Firestore'), ...path),
+    { includeMetadataChanges: true },
+    (snapshot) => onData(snapshot.docs
+      .map((document) => ({ id: document.id, ...document.data() }))
+      .sort((left, right) => String(left[sortField]).localeCompare(String(right[sortField]), 'ca'))),
+    onError,
+  )
+
+export const observeClassStudents = (classId, onStudents, onError) =>
+  observeSortedCollection({
+    path: ['classes', classId, 'students'],
+    sortField: 'displayName',
+    onData: onStudents,
+    onError,
+  })
+
+export const observeClassRooms = (classId, onRooms, onError) =>
+  observeSortedCollection({
+    path: ['classes', classId, 'rooms'],
+    sortField: 'name',
+    onData: onRooms,
+    onError,
+  })
+
+export const updateRoomMembership = async ({
+  classId,
+  roomId,
+  memberMode,
+  memberStudentIds = [],
+}) => {
+  if (!['all', 'selected'].includes(memberMode)) {
+    throw new Error('El tipus de membres de la sala no és vàlid.')
+  }
+  await updateDoc(doc(
+    requireFirebaseService(db, 'Firestore'),
+    'classes',
+    classId,
+    'rooms',
+    roomId,
+  ), {
+    memberMode,
+    memberStudentIds: memberMode === 'all'
+      ? []
+      : [...new Set(memberStudentIds)],
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export const updateClassSchoolSchedule = async ({ classId, schoolSchedule }) => {
+  const weekdayIds = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+  const cleanSchedule = Object.fromEntries(weekdayIds.map((dayId) => {
+    const schoolEndsAt = String(schoolSchedule[dayId]?.schoolEndsAt ?? '')
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(schoolEndsAt)) {
+      throw new Error('Tots els dies lectius necessiten una hora de sortida vàlida.')
+    }
+    return [dayId, { schoolEndsAt }]
+  }))
+  cleanSchedule.saturday = { schoolEndsAt: null }
+  cleanSchedule.sunday = { schoolEndsAt: null }
+  await updateDoc(doc(
+    requireFirebaseService(db, 'Firestore'),
+    'classes',
+    classId,
+  ), {
+    schoolSchedule: cleanSchedule,
+    updatedAt: serverTimestamp(),
+  })
+  return cleanSchedule
 }
 
 export const observeTutorClasses = (tutorId, onClasses, onError) => {

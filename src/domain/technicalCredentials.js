@@ -27,7 +27,6 @@ export const deriveStudentCredentials = async ({
   const source = [
     'company-estudi',
     'student-access',
-    credentialVersion,
     normalizedClassCode,
     normalizedStudentCode,
   ].join(':')
