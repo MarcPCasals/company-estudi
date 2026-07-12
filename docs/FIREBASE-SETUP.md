@@ -1,96 +1,78 @@
-# Configuració de Firebase
+# Configuració gratuïta de Firebase
+
+El projecte utilitza exclusivament el pla **Spark**, sense compte de facturació.
+No necessita Cloud Functions, Cloud Run, Secret Manager ni cap servei Blaze.
 
 ## Authentication
 
-Activa aquests proveïdors a **Authentication -> Sign-in method**:
+A **Authentication -> Sign-in method**, activa:
 
-- Google, per al tutor.
-- Anonymous, per crear la sessió tècnica de l'alumne abans de validar els seus codis.
+- **Google**, per als tutors.
+- **Email/Password**, per als comptes tècnics dels alumnes.
+
+Es pot desactivar **Anonymous**, perquè ja no forma part de l'arquitectura.
+
+Els alumnes continuen veient només `codi de classe + codi personal`. L'aplicació
+transforma aquests codis en un correu tècnic i una contrasenya derivats amb
+SHA-256. No són dades personals ni es mostren a l'alumne.
 
 ## Authorized domains
 
-A **Authentication -> Settings -> Authorized domains**, comprova o afegeix:
+A **Authentication -> Settings -> Authorized domains**, mantén:
 
 - `localhost`, per al desenvolupament local.
-- `127.0.0.1`, només si també s'utilitza aquesta adreça per desenvolupar.
-- `marcpcasals.github.io`, per a GitHub Pages. No s'hi posa `/company-estudi/`.
-- `company-estudi.firebaseapp.com`, que normalment ja apareix pel projecte.
-- `company-estudi.web.app`, si en algun moment també es desplega amb Firebase Hosting.
+- `127.0.0.1`, si també s'utilitza localment.
+- `marcpcasals.github.io`, per a GitHub Pages.
+- `company-estudi.firebaseapp.com`.
+- `company-estudi.web.app`, només si s'utilitza Firebase Hosting.
 
-Per al desplegament inicial a GitHub Pages s'utilitzarà `signInWithPopup`, no `signInWithRedirect`.
+No s'hi posa `https://`, cap port ni `/company-estudi/`.
 
-## Firestore
+## Flux gratuït d'accés de l'alumne
 
-1. Crea la base de dades en mode producció.
-2. Revisa `firestore.rules`.
-3. Publica les regles només després de validar-les amb l'emulador i dades fictícies.
+1. El tutor crea una classe amb el seu compte Google.
+2. El navegador genera codis aleatoris amb entropia criptogràfica.
+3. Una segona instància interna de Firebase Authentication crea el compte tècnic
+   de l'alumne sense tancar la sessió del tutor.
+4. Firestore vincula l'UID tècnic amb `classId`, `studentId` i la versió de la
+   credencial a `studentAccess/{uid}`.
+5. Quan l'alumne introdueix els dos codis, Firebase Authentication comprova les
+   credencials derivades.
+6. Les Rules només permeten l'accés si l'UID, l'alumne i la versió coincideixen.
 
-Les regles parteixen d'aquesta estructura:
+Un compte de Firebase creat fora d'aquest flux no té cap document
+`studentAccess` i, per tant, no pot llegir dades.
+
+## Estructura relacionada amb l'accés
 
 ```text
 classes/{classId}
   students/{studentId}
-    private/
-    tasks/
-    studySessions/
-    personalSchedule/
-    availability/
-    tutorialSubmissions/
-    tutorFeedback/
-  rooms/{roomId}
-    posts/
-    reports/
-  taskCandidates/
-  aggregates/
+  subjects/{subjectId}
+  rooms/{subjectId}
 
-studentSessions/{firebaseAuthUid}
-accessCredentials/
+studentAccess/{firebaseAuthUid}
+
+tutors/{tutorId}/classSecrets/{classId}
+  students/{studentId}
 ```
 
-## Punt de seguretat imprescindible
+`classSecrets` només és accessible pel tutor propietari. Els alumnes no poden
+llegir els codis propis ni els dels companys des de Firestore.
 
-El navegador no validarà directament `codi de classe + codi personal` contra una col·lecció llegible. El flux segur serà:
+## Regeneració i revocació
 
-1. L'alumne inicia una sessió anònima de Firebase Authentication.
-2. Una Cloud Function rep els dos codis.
-3. La funció comprova el verificador segur del codi i la versió de la credencial.
-4. La funció crea `studentSessions/{uid}` amb `classId`, `studentId`, `credentialVersion` i `active`.
-5. Les Rules comproven aquesta sessió en cada accés.
+La versió de la credencial forma part de la derivació tècnica. Quan es regenera
+un codi, es crea una credencial nova i el document de l'alumne passa a la versió
+següent. Les Rules deixen d'acceptar automàticament l'UID anterior.
 
-La funció `exchangeStudentCodes`, situada a `functions/src/index.js`, ja implementa
-aquest intercanvi. També limita els intents fallits a cinc cada deu minuts i crea
-sessions amb una durada màxima de trenta dies.
+## Límits i comportament del pla Spark
 
-Les credencials del servidor seguiran aquesta estructura, sempre amb resums HMAC
-i mai amb els codis originals:
-
-```text
-accessCredentials/{classCodeDigest}
-  classId
-  active
-  students/{studentCodeDigest}
-    studentId
-    credentialVersion
-    active
-```
-
-## Cloud Functions i pla Blaze
-
-El desplegament de Cloud Functions i l'ús de Secret Manager requereixen que el
-projecte estigui vinculat al pla Blaze. Un cop activat:
-
-```bash
-openssl rand -hex 32 | npx firebase-tools functions:secrets:set CODE_PEPPER --data-file=- --project company-estudi
-npx firebase-tools deploy --only functions:exchangeStudentCodes --project company-estudi
-```
-
-`CODE_PEPPER` és un secret exclusiu del servidor. No s'ha de copiar a `.env`, al
-frontend, a GitHub ni a cap document compartit.
-
-`accessCredentials` i l'escriptura de `studentSessions` estan bloquejats als clients. Les Cloud Functions amb Admin SDK no depenen de les Firestore Rules.
+El projecte no té facturació vinculada. Si algun servei arribés a la seva quota
+gratuïta, quedaria limitat fins que la quota es renovés; no generaria un cobrament.
 
 ## Variables d'entorn
 
-La configuració pública de l'app és a `.env.example`. Copia-la a `.env.local` per desenvolupar. `.env.local` queda exclòs de Git.
-
-La configuració web de Firebase identifica el projecte però no substitueix les Rules, l'autenticació ni App Check. No s'hi han de posar claus de comptes de servei, claus de servidor ni altres secrets.
+La configuració pública de Firebase és a `.env.example`. En local es copia a
+`.env.local`, que queda exclòs de Git. No s'hi guarden contrasenyes, comptes de
+servei ni secrets de servidor.

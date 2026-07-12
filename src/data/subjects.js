@@ -1,4 +1,4 @@
-export const DEFAULT_SUBJECTS = [
+export const DEFAULT_SUBJECTS = Object.freeze([
   { id: 'ciencies-fisiques-natura', name: 'Ciències Físiques i de la Natura' },
   { id: 'ciencies-humanes-socials', name: 'Ciències Humanes i Socials' },
   { id: 'educacio-fisica', name: 'Educació Física' },
@@ -12,4 +12,4 @@ export const DEFAULT_SUBJECTS = [
   { id: 'visual-plastica', name: 'Visual i Plàstica' },
   { id: 'projecte-integrador', name: 'Projecte Integrador' },
   { id: 'situacio-global', name: 'Situació Global' },
-]
+])

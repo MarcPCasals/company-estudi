@@ -194,12 +194,10 @@ const tutorLoginErrorMessage = (error) => {
 
 const classCreationErrorMessage = (error) => {
   const code = String(error?.code ?? '')
-  if (code.includes('not-found') || code.includes('internal')) {
-    return 'La funció segura del servidor encara no està desplegada. Cal que Firebase reconegui el pla Blaze.'
-  }
   if (code.includes('invalid-argument')) return error.message
   if (code.includes('unauthenticated')) return 'La sessió de tutor ha caducat. Torna a entrar amb Google.'
-  return 'No hem pogut crear la classe. Torna-ho a provar.'
+  if (code.includes('permission-denied')) return 'Les regles de Firestore no han permès crear la classe.'
+  return error?.message ?? 'No hem pogut crear la classe. Torna-ho a provar.'
 }
 
 function ClassManager({ tutorId }) {
@@ -310,7 +308,10 @@ function TutorLoginPanel() {
   const [status, setStatus] = useState({ state: 'idle', message: '' })
 
   useEffect(() => observeCurrentUser((currentUser) => {
-    setUser(currentUser?.isAnonymous ? null : currentUser)
+    const isGoogleTutor = currentUser?.providerData.some(
+      (provider) => provider.providerId === 'google.com',
+    )
+    setUser(isGoogleTutor ? currentUser : null)
     setAuthReady(true)
   }), [])
 
@@ -384,11 +385,15 @@ function TutorLoginPanel() {
 
 const studentAccessErrorMessage = (error) => {
   const code = String(error?.code ?? '')
-  if (code.includes('resource-exhausted')) {
-    return 'Has fet massa intents. Espera deu minuts i torna-ho a provar.'
-  }
-  if (code.includes('permission-denied')) {
+  if (
+    code.includes('invalid-credential')
+    || code.includes('user-not-found')
+    || code.includes('wrong-password')
+  ) {
     return 'Els codis no són correctes o ja no són vàlids.'
+  }
+  if (code.includes('operation-not-allowed')) {
+    return 'Cal activar Correu/contrasenya a Firebase Authentication.'
   }
   return 'No hem pogut validar els codis. Comprova la connexió i torna-ho a provar.'
 }
@@ -406,7 +411,7 @@ function StudentAccessForm() {
       const session = await exchangeStudentAccessCodes({ classCode, studentCode })
       setStatus({
         state: 'success',
-        message: `Accés validat. La sessió és vàlida fins al ${formatDeadline(session.expiresAt)}.`,
+        message: `Accés validat per a l’alumne ${session.studentId}.`,
       })
     } catch (error) {
       setStatus({ state: 'error', message: studentAccessErrorMessage(error) })

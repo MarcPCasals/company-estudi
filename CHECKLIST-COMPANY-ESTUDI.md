@@ -37,6 +37,7 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 - [x] Connectar el repositori local amb GitHub.
 - [x] Escollir i configurar Vite + React + JavaScript.
+- [x] Mantenir una arquitectura Firebase Spark sense serveis de pagament.
 - [x] Modelar classes, alumnes, assignatures, tasques, sessions, terminis, ocupacions i sales.
 - [x] Separar tasca personal, proposta comunitària i tasca oficial.
 - [ ] Definir estats i historial de canvis.

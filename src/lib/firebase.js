@@ -1,7 +1,6 @@
-import { getApps, initializeApp } from 'firebase/app'
+import { getApp, getApps, initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,10 +24,16 @@ export const firebaseApp = isFirebaseConfigured
 
 export const auth = firebaseApp ? getAuth(firebaseApp) : null
 export const db = firebaseApp ? getFirestore(firebaseApp) : null
-export const functions = firebaseApp
-  ? getFunctions(firebaseApp, 'europe-west1')
-  : null
 export const firebaseProjectId = firebaseConfig.projectId ?? null
+
+export const getStudentProvisioningAuth = () => {
+  if (!isFirebaseConfigured) return null
+  const appName = 'student-provisioning'
+  const provisioningApp = getApps().some((app) => app.name === appName)
+    ? getApp(appName)
+    : initializeApp(firebaseConfig, appName)
+  return getAuth(provisioningApp)
+}
 
 export const enableFirebaseAnalytics = async () => {
   if (!firebaseApp || !import.meta.env.PROD) return null

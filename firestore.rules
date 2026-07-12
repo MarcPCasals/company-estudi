@@ -11,19 +11,19 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
-    function signedInAnonymously() {
+    function signedInWithPassword() {
       return signedIn()
-        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+        && request.auth.token.firebase.sign_in_provider == 'password';
     }
 
-    function sessionExists() {
+    function studentAccessExists() {
       return signedIn()
-        && exists(/databases/$(database)/documents/studentSessions/$(request.auth.uid));
+        && exists(/databases/$(database)/documents/studentAccess/$(request.auth.uid));
     }
 
-    function sessionData() {
+    function studentAccessData() {
       return get(
-        /databases/$(database)/documents/studentSessions/$(request.auth.uid)
+        /databases/$(database)/documents/studentAccess/$(request.auth.uid)
       ).data;
     }
 
@@ -34,13 +34,19 @@ service cloud.firestore {
           == request.auth.uid;
     }
 
-    function hasCurrentStudentSession(classId, studentId) {
-      return signedInAnonymously()
-        && sessionExists()
-        && sessionData().active == true
-        && sessionData().expiresAt > request.time
-        && sessionData().classId == classId
-        && sessionData().studentId == studentId
+    function isTutorAfter(classId) {
+      return signedInWithGoogle()
+        && getAfter(
+          /databases/$(database)/documents/classes/$(classId)
+        ).data.tutorId == request.auth.uid;
+    }
+
+    function hasCurrentStudentAccess(classId, studentId) {
+      return signedInWithPassword()
+        && studentAccessExists()
+        && studentAccessData().active == true
+        && studentAccessData().classId == classId
+        && studentAccessData().studentId == studentId
         && exists(
           /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
         )
@@ -49,12 +55,15 @@ service cloud.firestore {
         ).data.active == true
         && get(
           /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
-        ).data.credentialVersion == sessionData().credentialVersion;
+        ).data.authUid == request.auth.uid
+        && get(
+          /databases/$(database)/documents/classes/$(classId)/students/$(studentId)
+        ).data.credentialVersion == studentAccessData().credentialVersion;
     }
 
     function isClassStudent(classId) {
-      return sessionExists()
-        && hasCurrentStudentSession(classId, sessionData().studentId);
+      return studentAccessExists()
+        && hasCurrentStudentAccess(classId, studentAccessData().studentId);
     }
 
     function ownsIncomingStudentData(classId, studentId) {
@@ -69,7 +78,8 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow create: if false;
+      allow create: if signedInWithGoogle()
+        && request.resource.data.tutorId == request.auth.uid;
       allow read: if (
           signedInWithGoogle()
           && resource.data.tutorId == request.auth.uid
@@ -80,60 +90,60 @@ service cloud.firestore {
 
       match /students/{studentId} {
         allow read: if isTutor(classId)
-          || hasCurrentStudentSession(classId, studentId);
+          || hasCurrentStudentAccess(classId, studentId);
         allow create, update, delete: if isTutor(classId);
 
         match /private/{document=**} {
-          allow read, write: if hasCurrentStudentSession(classId, studentId);
+          allow read, write: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /tasks/{taskId} {
           allow read: if isTutor(classId)
-            || hasCurrentStudentSession(classId, studentId);
-          allow create: if hasCurrentStudentSession(classId, studentId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
             && ownsIncomingStudentData(classId, studentId);
-          allow update: if hasCurrentStudentSession(classId, studentId)
+          allow update: if hasCurrentStudentAccess(classId, studentId)
             && keepsStudentOwnership(classId, studentId);
-          allow delete: if hasCurrentStudentSession(classId, studentId);
+          allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /studySessions/{sessionId} {
           allow read: if isTutor(classId)
-            || hasCurrentStudentSession(classId, studentId);
-          allow create: if hasCurrentStudentSession(classId, studentId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
             && ownsIncomingStudentData(classId, studentId);
-          allow update: if hasCurrentStudentSession(classId, studentId)
+          allow update: if hasCurrentStudentAccess(classId, studentId)
             && keepsStudentOwnership(classId, studentId);
-          allow delete: if hasCurrentStudentSession(classId, studentId);
+          allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /personalSchedule/{eventId} {
-          allow read, write: if hasCurrentStudentSession(classId, studentId);
+          allow read, write: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /availability/{summaryId} {
           allow read: if isTutor(classId)
-            || hasCurrentStudentSession(classId, studentId);
-          allow create: if hasCurrentStudentSession(classId, studentId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
             && ownsIncomingStudentData(classId, studentId);
-          allow update: if hasCurrentStudentSession(classId, studentId)
+          allow update: if hasCurrentStudentAccess(classId, studentId)
             && keepsStudentOwnership(classId, studentId);
-          allow delete: if hasCurrentStudentSession(classId, studentId);
+          allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /tutorialSubmissions/{submissionId} {
           allow read: if isTutor(classId)
-            || hasCurrentStudentSession(classId, studentId);
-          allow create: if hasCurrentStudentSession(classId, studentId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
             && ownsIncomingStudentData(classId, studentId);
-          allow update: if hasCurrentStudentSession(classId, studentId)
+          allow update: if hasCurrentStudentAccess(classId, studentId)
             && keepsStudentOwnership(classId, studentId);
-          allow delete: if hasCurrentStudentSession(classId, studentId);
+          allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
         match /tutorFeedback/{feedbackId} {
           allow read: if isTutor(classId)
-            || hasCurrentStudentSession(classId, studentId);
+            || hasCurrentStudentAccess(classId, studentId);
           allow create: if isTutor(classId)
             && request.resource.data.classId == classId
             && request.resource.data.studentId == studentId
@@ -148,9 +158,16 @@ service cloud.firestore {
         }
       }
 
+      match /subjects/{subjectId} {
+        allow read: if isTutor(classId) || isClassStudent(classId);
+        allow create: if isTutorAfter(classId);
+        allow update, delete: if isTutor(classId);
+      }
+
       match /rooms/{roomId} {
         allow read: if isTutor(classId) || isClassStudent(classId);
-        allow create, update, delete: if isTutor(classId);
+        allow create: if isTutorAfter(classId);
+        allow update, delete: if isTutor(classId);
 
         match /posts/{postId} {
           allow read: if isTutor(classId) || isClassStudent(classId);
@@ -161,25 +178,25 @@ service cloud.firestore {
             ) || (
               isClassStudent(classId)
               && request.resource.data.authorRole == 'student'
-              && request.resource.data.authorStudentId == sessionData().studentId
+              && request.resource.data.authorStudentId == studentAccessData().studentId
             );
           allow update: if isTutor(classId) || (
             isClassStudent(classId)
             && resource.data.authorRole == 'student'
-            && resource.data.authorStudentId == sessionData().studentId
+            && resource.data.authorStudentId == studentAccessData().studentId
             && request.resource.data.authorStudentId == resource.data.authorStudentId
             && request.resource.data.authorRole == resource.data.authorRole
           );
           allow delete: if isTutor(classId) || (
             isClassStudent(classId)
             && resource.data.authorRole == 'student'
-            && resource.data.authorStudentId == sessionData().studentId
+            && resource.data.authorStudentId == studentAccessData().studentId
           );
         }
 
         match /reports/{reportId} {
           allow create: if isClassStudent(classId)
-            && request.resource.data.reporterStudentId == sessionData().studentId;
+            && request.resource.data.reporterStudentId == studentAccessData().studentId;
           allow read, update, delete: if isTutor(classId);
         }
       }
@@ -195,22 +212,34 @@ service cloud.firestore {
       }
     }
 
-    match /studentSessions/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if false;
-    }
-
-    match /accessCredentials/{document=**} {
-      allow read, write: if false;
-    }
-
-    match /accessAttempts/{document=**} {
-      allow read, write: if false;
+    match /studentAccess/{uid} {
+      allow read: if signedIn() && (
+        request.auth.uid == uid || isTutor(resource.data.classId)
+      );
+      allow create: if signedInWithGoogle()
+        && isTutor(request.resource.data.classId)
+        && request.resource.data.studentId == uid;
+      allow update: if signedInWithGoogle()
+        && isTutor(resource.data.classId)
+        && request.resource.data.classId == resource.data.classId
+        && request.resource.data.studentId == resource.data.studentId;
+      allow delete: if signedInWithGoogle() && isTutor(resource.data.classId);
     }
 
     match /tutors/{tutorId}/classSecrets/{classId} {
       allow read: if signedInWithGoogle() && request.auth.uid == tutorId;
-      allow write: if false;
+      allow create: if signedInWithGoogle()
+        && request.auth.uid == tutorId
+        && isTutorAfter(classId);
+      allow update, delete: if signedInWithGoogle()
+        && request.auth.uid == tutorId
+        && isTutor(classId);
+
+      match /students/{studentId} {
+        allow read, create, update, delete: if signedInWithGoogle()
+          && request.auth.uid == tutorId
+          && isTutor(classId);
+      }
     }
 
     match /{document=**} {

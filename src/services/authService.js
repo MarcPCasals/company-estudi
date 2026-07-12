@@ -1,12 +1,13 @@
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInAnonymously,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
 } from 'firebase/auth'
-import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../lib/firebase.js'
+import { doc, getDoc } from 'firebase/firestore'
+import { deriveStudentCredentials } from '../domain/technicalCredentials.js'
+import { auth, db } from '../lib/firebase.js'
 
 const requireAuth = () => {
   if (!auth) {
@@ -21,21 +22,27 @@ export const signInTutorWithGoogle = async () => {
   return signInWithPopup(requireAuth(), provider)
 }
 
-export const beginAnonymousStudentSession = () =>
-  auth?.currentUser?.isAnonymous
-    ? Promise.resolve({ user: auth.currentUser })
-    : signInAnonymously(requireAuth())
-
 export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => {
-  await beginAnonymousStudentSession()
+  if (!db) throw new Error('Firestore no està configurat en aquest entorn.')
+  const credentials = await deriveStudentCredentials({ classCode, studentCode })
+  const result = await signInWithEmailAndPassword(
+    requireAuth(),
+    credentials.email,
+    credentials.password,
+  )
+  const accessSnapshot = await getDoc(doc(db, 'studentAccess', result.user.uid))
+  const access = accessSnapshot.data()
 
-  if (!functions) {
-    throw new Error('Firebase Functions no està configurat en aquest entorn.')
+  if (!accessSnapshot.exists() || access?.active !== true) {
+    await signOut(requireAuth())
+    throw new Error('Aquesta credencial no està vinculada a cap alumne actiu.')
   }
 
-  const exchangeCodes = httpsCallable(functions, 'exchangeStudentCodes')
-  const result = await exchangeCodes({ classCode, studentCode })
-  return result.data
+  return {
+    classId: access.classId,
+    studentId: access.studentId,
+    credentialVersion: access.credentialVersion,
+  }
 }
 
 export const signOutCurrentUser = () => signOut(requireAuth())

@@ -14,6 +14,9 @@ classes/{classId}
     tasks/{taskId}
     studySessions/{sessionId}
     personalSchedule/{occupationId}
+
+studentAccess/{firebaseAuthUid}
+tutors/{tutorId}/classSecrets/{classId}
 ```
 
 ## Entitats
@@ -80,3 +83,4 @@ tutor només podrà veure un resum de disponibilitat, mai el detall.
 - Les propostes comunitàries no conserven la identitat de qui ha creat tasques semblants.
 - Una tasca oficial no modifica automàticament el calendari personal.
 - Els codis i verificadors d'accés viuen fora de l'arbre llegible pels alumnes.
+- Cada UID tècnic només obté accés si existeix el seu vincle a `studentAccess`.
