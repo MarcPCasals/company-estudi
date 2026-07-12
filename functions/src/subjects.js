@@ -1,0 +1,15 @@
+export const DEFAULT_SUBJECTS = [
+  { id: 'ciencies-fisiques-natura', name: 'Ciències Físiques i de la Natura' },
+  { id: 'ciencies-humanes-socials', name: 'Ciències Humanes i Socials' },
+  { id: 'educacio-fisica', name: 'Educació Física' },
+  { id: 'angles', name: 'Anglès' },
+  { id: 'catala', name: 'Català' },
+  { id: 'castella', name: 'Castellà' },
+  { id: 'frances', name: 'Francès' },
+  { id: 'matematiques', name: 'Matemàtiques' },
+  { id: 'educacio-musical', name: 'Educació musical' },
+  { id: 'tecnologia', name: 'Tecnologia' },
+  { id: 'visual-plastica', name: 'Visual i Plàstica' },
+  { id: 'projecte-integrador', name: 'Projecte Integrador' },
+  { id: 'situacio-global', name: 'Situació Global' },
+]

@@ -69,9 +69,11 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow create: if signedInWithGoogle()
-        && request.resource.data.tutorId == request.auth.uid;
-      allow read: if isTutor(classId) || isClassStudent(classId);
+      allow create: if false;
+      allow read: if (
+          signedInWithGoogle()
+          && resource.data.tutorId == request.auth.uid
+        ) || isClassStudent(classId);
       allow update: if isTutor(classId)
         && request.resource.data.tutorId == resource.data.tutorId;
       allow delete: if isTutor(classId);
@@ -204,6 +206,11 @@ service cloud.firestore {
 
     match /accessAttempts/{document=**} {
       allow read, write: if false;
+    }
+
+    match /tutors/{tutorId}/classSecrets/{classId} {
+      allow read: if signedInWithGoogle() && request.auth.uid == tutorId;
+      allow write: if false;
     }
 
     match /{document=**} {

@@ -3,10 +3,12 @@ import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { HttpsError, onCall } from 'firebase-functions/v2/https'
 import {
+  createAccessCode,
   credentialDigest,
   isValidAccessCode,
   normalizeAccessCode,
 } from './accessSecurity.js'
+import { DEFAULT_SUBJECTS } from './subjects.js'
 
 if (getApps().length === 0) initializeApp()
 
@@ -65,7 +67,29 @@ const recordFailedAttempt = (uid) => db.doc(`accessAttempts/${uid}`).set({
 
 const clearFailedAttempts = (uid) => db.doc(`accessAttempts/${uid}`).delete()
 
-export const exchangeStudentCodes = onCall({
+const requireGoogleTutor = (request) => {
+  const provider = request.auth?.token?.firebase?.sign_in_provider
+  if (!request.auth || provider !== 'google.com') {
+    throw new HttpsError(
+      'unauthenticated',
+      'Cal iniciar sessió amb Google com a tutor.',
+    )
+  }
+  return request.auth.uid
+}
+
+const cleanRequiredText = (value, label, maxLength = 80) => {
+  const cleanValue = String(value ?? '').trim().replace(/\s+/g, ' ')
+  if (cleanValue.length < 2 || cleanValue.length > maxLength) {
+    throw new HttpsError(
+      'invalid-argument',
+      `${label} ha de tenir entre 2 i ${maxLength} caràcters.`,
+    )
+  }
+  return cleanValue
+}
+
+const callableOptions = {
   region: 'europe-west1',
   secrets: [codePepper],
   timeoutSeconds: 15,
@@ -76,7 +100,74 @@ export const exchangeStudentCodes = onCall({
     /^http:\/\/127\.0\.0\.1:\d+$/,
     'https://marcpcasals.github.io',
   ],
-}, async (request) => {
+}
+
+export const createClass = onCall(callableOptions, async (request) => {
+  const tutorId = requireGoogleTutor(request)
+  const name = cleanRequiredText(request.data?.name, 'El nom de la classe')
+  const course = cleanRequiredText(request.data?.course, 'El curs')
+  const pepper = codePepper.value()
+  const classRef = db.collection('classes').doc()
+
+  let classCode
+  let credentialRef
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    classCode = createAccessCode(5)
+    const digest = credentialDigest({ kind: 'class', code: classCode, pepper })
+    const candidateRef = db.doc(`accessCredentials/${digest}`)
+    if (!(await candidateRef.get()).exists) {
+      credentialRef = candidateRef
+      break
+    }
+  }
+
+  if (!credentialRef) {
+    throw new HttpsError('aborted', 'No s’ha pogut generar un codi únic. Torna-ho a provar.')
+  }
+
+  const batch = db.batch()
+  batch.create(classRef, {
+    tutorId,
+    name,
+    course,
+    active: true,
+    subjectIds: DEFAULT_SUBJECTS.map((subject) => subject.id),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  })
+  batch.create(credentialRef, {
+    classId: classRef.id,
+    active: true,
+    createdAt: FieldValue.serverTimestamp(),
+  })
+  batch.create(db.doc(`tutors/${tutorId}/classSecrets/${classRef.id}`), {
+    classId: classRef.id,
+    classCode,
+    credentialVersion: 1,
+    createdAt: FieldValue.serverTimestamp(),
+  })
+
+  for (const subject of DEFAULT_SUBJECTS) {
+    batch.create(classRef.collection('rooms').doc(subject.id), {
+      name: subject.name,
+      subjectId: subject.id,
+      active: true,
+      createdAt: FieldValue.serverTimestamp(),
+    })
+  }
+
+  await batch.commit()
+
+  return {
+    classId: classRef.id,
+    classCode,
+    name,
+    course,
+    subjectCount: DEFAULT_SUBJECTS.length,
+  }
+})
+
+export const exchangeStudentCodes = onCall(callableOptions, async (request) => {
   const uid = requireAnonymousUser(request)
   const classCode = normalizeAccessCode(request.data?.classCode)
   const studentCode = normalizeAccessCode(request.data?.studentCode)

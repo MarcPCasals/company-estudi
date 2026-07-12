@@ -20,6 +20,10 @@ import {
   signInTutorWithGoogle,
   signOutCurrentUser,
 } from './services/authService.js'
+import {
+  createTutorClass,
+  observeTutorClasses,
+} from './services/classService.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -188,6 +192,118 @@ const tutorLoginErrorMessage = (error) => {
   return 'No hem pogut iniciar la sessió amb Google. Torna-ho a provar.'
 }
 
+const classCreationErrorMessage = (error) => {
+  const code = String(error?.code ?? '')
+  if (code.includes('not-found') || code.includes('internal')) {
+    return 'La funció segura del servidor encara no està desplegada. Cal que Firebase reconegui el pla Blaze.'
+  }
+  if (code.includes('invalid-argument')) return error.message
+  if (code.includes('unauthenticated')) return 'La sessió de tutor ha caducat. Torna a entrar amb Google.'
+  return 'No hem pogut crear la classe. Torna-ho a provar.'
+}
+
+function ClassManager({ tutorId }) {
+  const [classes, setClasses] = useState([])
+  const [showForm, setShowForm] = useState(false)
+  const [name, setName] = useState('')
+  const [course, setCourse] = useState('')
+  const [status, setStatus] = useState({ state: 'idle', message: '' })
+  const [createdClass, setCreatedClass] = useState(null)
+
+  useEffect(() => observeTutorClasses(
+    tutorId,
+    setClasses,
+    () => setStatus({ state: 'error', message: 'No hem pogut carregar les classes.' }),
+  ), [tutorId])
+
+  const submit = async (event) => {
+    event.preventDefault()
+    setStatus({ state: 'loading', message: 'Creant la classe i les sales…' })
+    try {
+      const result = await createTutorClass({ name, course })
+      setCreatedClass(result)
+      setName('')
+      setCourse('')
+      setShowForm(false)
+      setStatus({ state: 'success', message: 'Classe creada correctament.' })
+    } catch (error) {
+      setStatus({ state: 'error', message: classCreationErrorMessage(error) })
+    }
+  }
+
+  return (
+    <div className="class-manager">
+      <div className="class-manager-heading">
+        <div>
+          <h3>Les meves classes</h3>
+          <p className="helper-text">
+            {classes.length === 0 ? 'Encara no has creat cap classe.' : `${classes.length} classes creades.`}
+          </p>
+        </div>
+        <button type="button" onClick={() => setShowForm((current) => !current)}>
+          {showForm ? 'Cancel·la' : 'Crea una classe'}
+        </button>
+      </div>
+
+      {showForm && (
+        <form className="class-creator" onSubmit={submit}>
+          <label>
+            Nom de la classe
+            <input
+              required
+              minLength={2}
+              maxLength={80}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Tutoria 2n B"
+            />
+          </label>
+          <label>
+            Curs
+            <input
+              required
+              minLength={2}
+              maxLength={80}
+              value={course}
+              onChange={(event) => setCourse(event.target.value)}
+              placeholder="2n d’EASEO · 2026-2027"
+            />
+          </label>
+          <button type="submit" disabled={status.state === 'loading'}>
+            {status.state === 'loading' ? 'Creant…' : 'Crea la classe i les sales'}
+          </button>
+          <p className="helper-text">
+            Es crearan automàticament les 13 sales d’assignatura precarregades.
+          </p>
+        </form>
+      )}
+
+      {createdClass && (
+        <div className="created-class-result">
+          <strong>{createdClass.name} · {createdClass.course}</strong>
+          <span>Codi de classe: <code>{createdClass.classCode}</code></span>
+          <p>Guarda aquest codi. El següent pas serà afegir els alumnes.</p>
+        </div>
+      )}
+
+      {classes.length > 0 && (
+        <ul className="class-list">
+          {classes.map((classroom) => (
+            <li key={classroom.id}>
+              <strong>{classroom.name}</strong>
+              <span>{classroom.course}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {status.message && (
+        <p className={`form-status ${status.state}`} role="status">{status.message}</p>
+      )}
+    </div>
+  )
+}
+
 function TutorLoginPanel() {
   const [user, setUser] = useState(null)
   const [authReady, setAuthReady] = useState(false)
@@ -246,17 +362,17 @@ function TutorLoginPanel() {
       )}
 
       {user && (
-        <div className="signed-in-user">
-          {user.photoURL && <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />}
-          <div>
-            <strong>{user.displayName ?? 'Tutor'}</strong>
-            <span>{user.email}</span>
+        <>
+          <div className="signed-in-user">
+            {user.photoURL && <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />}
+            <div>
+              <strong>{user.displayName ?? 'Tutor'}</strong>
+              <span>{user.email}</span>
+            </div>
+            <button type="button" className="secondary" onClick={logout}>Tanca la sessió</button>
           </div>
-          <button type="button" className="secondary" onClick={logout}>Tanca la sessió</button>
-          <p className="helper-text">
-            Ja pots continuar al següent pas: crear la classe i afegir-hi els alumnes.
-          </p>
-        </div>
+          <ClassManager tutorId={user.uid} />
+        </>
       )}
 
       {status.message && (

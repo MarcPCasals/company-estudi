@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
@@ -22,4 +22,15 @@ export const constantTimeEqual = (left, right) => {
 
   return leftBuffer.length === rightBuffer.length
     && timingSafeEqual(leftBuffer, rightBuffer)
+}
+
+export const createAccessCode = (length, nextIndex = (max) => randomInt(max)) => {
+  if (!Number.isInteger(length) || length < 4) {
+    throw new Error('La llargada del codi ha de ser de quatre caràcters o més.')
+  }
+
+  return Array.from(
+    { length },
+    () => CODE_ALPHABET[nextIndex(CODE_ALPHABET.length)],
+  ).join('')
 }
