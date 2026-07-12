@@ -18,9 +18,9 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 - [x] Alumne entra amb codi de classe i codi personal aleatori.
 - [x] Separar espai personal, tutorial i comunitari.
 - [x] El tutor veu informació acadèmica i patrons; no veu notes, extraescolars ni activitat en directe.
-- [ ] Definir la matriu final de permisos.
-- [ ] Fer els codis regenerables i revocables.
-- [ ] Crear «Veure el meu perfil com el veu el tutor».
+- [x] Definir i codificar la matriu inicial de permisos.
+- [x] Fer els codis regenerables i revocables, invalidant sessions antigues.
+- [x] Crear una primera validació de «Veure el meu perfil com el veu el tutor».
 - [ ] Validar privacitat i tractament de dades abans del pilot real.
 
 ## 3. Assignatures i competències
@@ -35,8 +35,8 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 4. Base tècnica i model de dades
 
-- [ ] Connectar el repositori local amb GitHub.
-- [ ] Escollir i configurar la pila tecnològica.
+- [x] Connectar el repositori local amb GitHub.
+- [x] Escollir i configurar Vite + React + JavaScript.
 - [ ] Modelar classes, alumnes, assignatures, tasques, sessions, terminis, ocupacions i sales.
 - [ ] Separar tasca personal, proposta comunitària i tasca oficial.
 - [ ] Definir estats i historial de canvis.
