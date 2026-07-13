@@ -31,4 +31,18 @@ describe('configuració inicial de planificació', () => {
       activities: [{ day: 'monday', start: '20:00', end: '19:00', label: 'Activitat' }],
     })).toThrow('acabar')
   })
+
+  it('desa colors d’assignatura vàlids i recupera el valor segur si no ho són', () => {
+    const setup = normalizePlanningSetup({
+      subjectColors: {
+        castella: '#ABCDEF',
+        matematiques: 'verd',
+        inventada: '#000000',
+      },
+    })
+
+    expect(setup.privateSettings.subjectColors.castella).toBe('#abcdef')
+    expect(setup.privateSettings.subjectColors.matematiques).toBe('#4f883f')
+    expect(setup.privateSettings.subjectColors).not.toHaveProperty('inventada')
+  })
 })

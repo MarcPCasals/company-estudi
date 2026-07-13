@@ -126,17 +126,18 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 12. Disseny visual i maquetació
 
-> Aquest bloc va aquí perquè ja sabrem què ha de contenir cada pantalla, però encara no haurem construït la interfície definitiva.
+> Direcció 1 + 3 aprovada i aplicada. Queden dues validacions externes: les il·lustracions definitives del Piu i una prova curta amb alumnes.
 
-- [ ] Explorar i comparar tres direccions visuals.
-- [ ] Escollir una estètica juvenil, motivadora i no infantil.
-- [ ] Definir colors d'assignatura configurables per alumne.
-- [ ] Definir tipografia, icones, espais, targetes i estats.
-- [ ] Dissenyar Avui, calendari, deures, comunitat, progrés i espai del tutor.
-- [ ] Dissenyar la mascota i els elements de gamificació.
-- [ ] Preparar iPad horitzontal, iPad vertical, ordinador i mòbil reduït.
-- [ ] Garantir contrast, accessibilitat i informació no dependent només del color.
-- [ ] Validar el prototip visual amb alumnes abans d'aplicar-lo a tota l'app.
+- [x] Explorar i comparar tres direccions visuals.
+- [x] Escollir una estètica juvenil, motivadora i no infantil.
+- [x] Definir colors d'assignatura configurables per alumne.
+- [x] Definir tipografia, icones, espais, targetes i estats.
+- [x] Dissenyar Avui, calendari, deures, comunitat, progrés i espai del tutor.
+- [x] Dissenyar els elements de gamificació i reservar l'espai de la mascota.
+- [ ] Integrar les il·lustracions definitives del Piu quan estiguin disponibles.
+- [x] Preparar iPad horitzontal, iPad vertical, ordinador i mòbil reduït.
+- [x] Garantir contrast, accessibilitat i informació no dependent només del color.
+- [ ] Validar el prototip visual amb alumnes abans del pilot.
 
 ## 13. Construcció, qualitat i pilot
 

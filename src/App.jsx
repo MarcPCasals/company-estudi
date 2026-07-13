@@ -413,7 +413,7 @@ function ClassManager({ tutorId }) {
   )
 }
 
-function TutorLoginPanel() {
+function TutorLoginPanel({ onUserChange = () => {} }) {
   const [user, setUser] = useState(null)
   const [authReady, setAuthReady] = useState(false)
   const [status, setStatus] = useState({ state: 'idle', message: '' })
@@ -422,9 +422,11 @@ function TutorLoginPanel() {
     const isGoogleTutor = currentUser?.providerData.some(
       (provider) => provider.providerId === 'google.com',
     )
-    setUser(isGoogleTutor ? currentUser : null)
+    const tutor = isGoogleTutor ? currentUser : null
+    setUser(tutor)
+    onUserChange(tutor)
     setAuthReady(true)
-  }), [])
+  }), [onUserChange])
 
   const login = async () => {
     setStatus({ state: 'loading', message: 'Obrint Google…' })
@@ -524,7 +526,7 @@ const studentAccessErrorMessage = (error) => {
   return 'No hem pogut validar els codis. Comprova la connexió i torna-ho a provar.'
 }
 
-function StudentAccessForm() {
+function StudentAccessForm({ onSessionChange }) {
   const [classCode, setClassCode] = useState('')
   const [studentCode, setStudentCode] = useState('')
   const [status, setStatus] = useState({ state: 'idle', message: '' })
@@ -536,12 +538,16 @@ function StudentAccessForm() {
     )
     if (!isStudent) {
       setSession(null)
+      onSessionChange(null)
       return
     }
     loadCurrentStudentContext(currentUser)
-      .then(setSession)
+      .then((currentSession) => {
+        setSession(currentSession)
+        onSessionChange(currentSession)
+      })
       .catch((error) => setStatus({ state: 'error', message: studentAccessErrorMessage(error) }))
-  }), [])
+  }), [onSessionChange])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -550,6 +556,7 @@ function StudentAccessForm() {
     try {
       const session = await exchangeStudentAccessCodes({ classCode, studentCode })
       setSession(session)
+      onSessionChange(session)
       setStatus({
         state: 'success',
         message: `Accés validat per a l’alumne ${session.studentId}.`,
@@ -560,7 +567,7 @@ function StudentAccessForm() {
   }
 
   if (session) {
-    return <StudentOnboarding session={session} onLogout={signOutCurrentUser} />
+    return null
   }
 
   return (
@@ -615,15 +622,42 @@ function StudentAccessForm() {
 }
 
 export default function App() {
-  const [mode, setMode] = useState('student')
+  const [studentSession, setStudentSession] = useState(null)
+  const [tutorUser, setTutorUser] = useState(null)
+
+  if (studentSession) {
+    return (
+      <StudentOnboarding
+        session={studentSession}
+        onLogout={async () => {
+          await signOutCurrentUser()
+          setStudentSession(null)
+        }}
+      />
+    )
+  }
+
+  if (tutorUser) {
+    return (
+      <main className="tutor-visual-shell">
+        <header className="tutor-visual-topbar">
+          <strong>Company d’estudi</strong>
+          <span>Espai del tutor</span>
+        </header>
+        <div className="tutor-visual-content">
+          <TutorLoginPanel onUserChange={setTutorUser} />
+        </div>
+      </main>
+    )
+  }
 
   return (
-    <main className="app-shell">
-      <header className="page-heading">
+    <main className="app-shell public-app-shell">
+      <header className="page-heading public-hero">
         <p className="eyebrow">Company d’estudi</p>
-        <h1>Base funcional d’accés i privacitat</h1>
+        <h1>Organitza’t amb calma, avança amb confiança</h1>
         <p>
-          Aquesta pantalla valida què veu cada rol. No és el disseny visual definitiu de l’aplicació.
+          Planifica els deures, troba temps realista per estudiar i demana ajuda a la teva classe quan la necessitis.
         </p>
         <p className="firebase-status" role="status">
           Firebase:{' '}
@@ -631,34 +665,18 @@ export default function App() {
         </p>
       </header>
 
+      <div className="public-access-layout">
+        <TutorLoginPanel onUserChange={setTutorUser} />
+        <StudentAccessForm onSessionChange={setStudentSession} />
+      </div>
+
       <OfflineStatusPanel />
 
-      <nav className="mode-switcher" aria-label="Canvia la vista de privacitat">
-        {[
-          ['student', 'Alumne'],
-          ['tutor', 'Tutor'],
-          ['community', 'Comunitat'],
-        ].map(([value, label]) => (
-          <button
-            type="button"
-            aria-pressed={mode === value}
-            className={mode === value ? 'active' : ''}
-            key={value}
-            onClick={() => setMode(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <div className="layout">
-        <ProfilePreview mode={mode} />
-        <div className="panel-stack">
-          <TutorLoginPanel />
-          <StudentAccessForm />
-          <CredentialDemo />
-        </div>
-      </div>
+      <section className="public-privacy-note" aria-labelledby="privacy-note-title">
+        <p className="eyebrow">Privacitat clara</p>
+        <h2 id="privacy-note-title">Un mateix espai de classe, una agenda personal per alumne</h2>
+        <p>El tutor acompanya la planificació i veu evidències útils per orientar. Les notes personals i el nom de les extraescolars continuen sent privats.</p>
+      </section>
     </main>
   )
 }

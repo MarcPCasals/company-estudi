@@ -1,8 +1,10 @@
 import { DEFAULT_SCHOOL_SCHEDULE, WEEK_DAYS } from '../data/defaultSchedule.js'
+import { DEFAULT_SUBJECT_COLORS } from '../data/subjects.js'
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 const DAY_IDS = new Set(WEEK_DAYS.map((day) => day.id))
 const OCCUPATION_TYPES = new Set(['extracurricular', 'meal', 'other'])
+const COLOR_PATTERN = /^#[0-9a-f]{6}$/i
 
 const assertMinutes = (value, label) => {
   const minutes = Number(value)
@@ -32,6 +34,7 @@ export const normalizePlanningSetup = ({
   weekendStart = '10:00',
   weekendEnd = '18:00',
   activities = [],
+  subjectColors = DEFAULT_SUBJECT_COLORS,
   schoolSchedule = DEFAULT_SCHOOL_SCHEDULE,
 }) => {
   const cleanTravelMinutes = assertMinutes(travelMinutes, 'El trajecte')
@@ -87,6 +90,12 @@ export const normalizePlanningSetup = ({
     return events
   })
   const personalEvents = [...routineEvents, ...cleanActivities]
+  const cleanSubjectColors = Object.fromEntries(Object.entries(DEFAULT_SUBJECT_COLORS).map(
+    ([subjectId, fallback]) => {
+      const candidate = String(subjectColors?.[subjectId] ?? fallback)
+      return [subjectId, COLOR_PATTERN.test(candidate) ? candidate.toLowerCase() : fallback]
+    },
+  ))
 
   return {
     privateSettings: {
@@ -94,6 +103,7 @@ export const normalizePlanningSetup = ({
       restMinutes: cleanRestMinutes,
       weekend,
       activities: cleanActivities,
+      subjectColors: cleanSubjectColors,
     },
     personalEvents,
     availabilitySummary: {
