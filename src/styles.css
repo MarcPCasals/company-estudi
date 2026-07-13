@@ -188,6 +188,45 @@ button:disabled {
   border-top: 2px solid #cbd5e1;
 }
 
+.tutor-dashboard { display: grid; gap: 1rem; margin-top: 1.25rem; padding: 1rem; border: 2px solid #bfdbfe; border-radius: .75rem; background: #f8fbff; }
+.tutor-dashboard-heading,.tutor-detail-heading,.student-tutorial-heading { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.tutor-dashboard h3,.tutor-dashboard h4,.tutor-dashboard h5,.student-tutorial-panel h2,.student-tutorial-panel h3,.tutor-student-detail h4 { margin:0; }
+.tutor-summary-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:.65rem; }
+.tutor-summary-cards article { display:grid; padding:.8rem; border:1px solid #dbeafe; border-radius:.6rem; background:white; }
+.tutor-summary-cards strong { font-size:1.5rem; }
+.tutor-overview-grid,.tutor-detail-grid,.tutorial-history-grid,.student-tutorial-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; }
+.tutor-overview-grid>section,.tutorial-history-grid>section,.student-tutorial-grid>section,.student-tutorial-grid>form { display:grid; align-content:start; gap:.6rem; padding:.8rem; border:1px solid #e2e8f0; border-radius:.6rem; background:white; }
+.tutor-exception { display:grid; width:100%; min-height:0; margin-top:.4rem; padding:.55rem; color:#334155; border-color:#fed7aa; background:#fff7ed; text-align:left; }
+.class-load-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:.35rem; }
+.class-load-grid article { display:grid; gap:.2rem; padding:.45rem; border:1px solid #e2e8f0; border-radius:.4rem; font-size:.72rem; }
+.tutor-student-picker { display:grid; gap:.5rem; }
+.tutor-student-picker>div { display:flex; flex-wrap:wrap; gap:.4rem; }
+.tutor-student-picker button { min-height:36px; padding:.4rem .6rem; }
+.tutor-student-detail { display:grid; gap:1rem; padding-top:1rem; border-top:2px solid #cbd5e1; }
+.tutor-insights { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.6rem; }
+.tutor-insights article { padding:.7rem; border:1px solid #dbeafe; border-radius:.55rem; background:white; }
+.tutor-insights p { margin:.3rem 0; }
+.tutor-insights small,.tutor-detail-grid small,.tutorial-history-grid small { color:#64748b; }
+.explainability-note { margin:0; padding:.65rem; color:#475569; background:#eef2ff; border-radius:.5rem; }
+.tutor-detail-grid form,.tutor-notice-form { display:grid; align-content:start; gap:.6rem; padding:.8rem; border:1px solid #e2e8f0; border-radius:.6rem; background:white; }
+.tutor-detail-grid label,.tutor-notice-form label,.student-tutorial-grid label { display:grid; gap:.3rem; font-weight:700; }
+.tutor-detail-grid input,.tutor-detail-grid select,.tutor-detail-grid textarea,.tutor-notice-form input,.tutor-notice-form select,.student-tutorial-grid textarea { min-width:0; padding:.6rem; border:1px solid #cbd5e1; border-radius:.45rem; font:inherit; }
+.tutorial-history-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.tutorial-history-grid article,.student-tutorial-grid article { padding:.6rem; border-left:4px solid #93c5fd; background:#f8fafc; }
+.tutorial-history-grid p,.student-tutorial-grid p { margin:.3rem 0; }
+.tutor-notice-form fieldset { display:flex; flex-wrap:wrap; gap:.5rem; border:1px solid #cbd5e1; border-radius:.5rem; }
+.student-tutorial-panel { display:grid; gap:1rem; }
+.student-notice,.student-goal,.student-suggestion { padding:.85rem; border:1px solid #bfdbfe; border-radius:.65rem; background:#eff6ff; }
+.student-notice p,.student-goal p,.student-suggestion p { margin:.4rem 0; }
+.student-goal { display:grid; gap:.3rem; border-color:#d8d1ef; background:#faf8ff; }
+.student-goal>span { color:#64748b; font-size:.8rem; font-weight:750; text-transform:uppercase; }
+.student-suggestion small { display:block; margin-top:.5rem; color:#475569; }
+
+@media (max-width:900px) {
+  .class-load-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .tutor-insights,.tutorial-history-grid { grid-template-columns:1fr; }
+}
+
 .class-workspace-heading {
   display: flex;
   justify-content: space-between;

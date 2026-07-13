@@ -81,13 +81,13 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 8. Espai del tutor i avaluació formadora
 
-- [ ] Crear resum de classe amb peticions d'ajuda i excepcions útils.
-- [ ] Crear calendari agregat de càrrega i terminis.
-- [ ] Crear fitxa individual de l'alumne.
-- [ ] Mostrar objectiu tutorial, revisions, evidències i feedback.
-- [ ] Mostrar tendències explicables, mai una puntuació secreta.
-- [ ] Permetre suggerir una sessió, però no editar el calendari de l'alumne.
-- [ ] Crear avisos individuals, de grup i de classe amb to no culpabilitzador.
+- [x] Crear resum de classe amb peticions d'ajuda i excepcions útils.
+- [x] Crear calendari agregat de càrrega i terminis.
+- [x] Crear fitxa individual de l'alumne.
+- [x] Mostrar objectiu tutorial, revisions, evidències i feedback.
+- [x] Mostrar tendències explicables, mai una puntuació secreta.
+- [x] Permetre suggerir una sessió, però no editar el calendari de l'alumne.
+- [x] Crear avisos individuals, de grup i de classe amb to no culpabilitzador.
 
 ## 9. Comunitat i recordatoris col·lectius
 

@@ -16,6 +16,11 @@ classes/{classId}
       history/{historyId}
     studySessions/{sessionId}
     personalSchedule/{occupationId}
+    tutorialGoals/current
+    tutorialSubmissions/{weekId}
+    tutorFeedback/{feedbackId}
+    sessionSuggestions/{suggestionId}
+    notices/{noticeId}
 
 studentAccess/{firebaseAuthUid}
 tutors/{tutorId}/classSecrets/{classId}
@@ -117,3 +122,5 @@ tutor només podrà veure un resum de disponibilitat, mai el detall.
 - Una tasca oficial no modifica automàticament el calendari personal.
 - Els codis i verificadors d'accés viuen fora de l'arbre llegible pels alumnes.
 - Cada UID tècnic només obté accés si existeix el seu vincle a `studentAccess`.
+- El tutor pot crear suggeriments de sessió, però només l'alumne pot acceptar-los
+  i convertir-los en una sessió real del seu calendari.

@@ -186,6 +186,43 @@ service cloud.firestore {
           allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
+        match /tutorialGoals/{goalId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create, update: if isTutor(classId)
+            && request.resource.data.classId == classId
+            && request.resource.data.studentId == studentId
+            && request.resource.data.authorTutorId == request.auth.uid;
+          allow delete: if isTutor(classId);
+        }
+
+        match /sessionSuggestions/{suggestionId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if isTutor(classId)
+            && request.resource.data.classId == classId
+            && request.resource.data.studentId == studentId
+            && request.resource.data.authorTutorId == request.auth.uid
+            && request.resource.data.status == 'pending';
+          allow update: if hasCurrentStudentAccess(classId, studentId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status', 'respondedAt'])
+            && request.resource.data.status in ['accepted', 'declined'];
+          allow delete: if isTutor(classId);
+        }
+
+        match /notices/{noticeId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if isTutor(classId)
+            && request.resource.data.classId == classId
+            && request.resource.data.studentId == studentId
+            && request.resource.data.authorTutorId == request.auth.uid;
+          allow update: if hasCurrentStudentAccess(classId, studentId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+          allow delete: if isTutor(classId);
+        }
+
         match /tutorFeedback/{feedbackId} {
           allow read: if isTutor(classId)
             || hasCurrentStudentAccess(classId, studentId);

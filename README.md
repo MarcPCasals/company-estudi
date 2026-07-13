@@ -22,6 +22,8 @@ La primera base funcional implementa:
 - notes de tasca en documents privats i avisos de possibles duplicats sense fusions automàtiques;
 - pantalla «Avui», calendari setmanal i propostes de sessions que sempre requereixen confirmació;
 - ocupacions recurrents privades i planificació que reserva descans i temps lliure;
+- espai tutorial amb excepcions útils, càrrega agregada, fitxa individual, revisions i feedback;
+- suggeriments de sessió sotmesos a acceptació i avisos formatius individuals, de grup o de classe;
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 
