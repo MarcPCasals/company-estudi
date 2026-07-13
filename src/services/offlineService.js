@@ -4,7 +4,6 @@ import {
   waitForPendingWrites,
 } from 'firebase/firestore'
 import {
-  isOfflinePersistenceEnabled,
   saveOfflinePersistencePreference,
 } from '../domain/offlinePolicy.js'
 import { db } from '../lib/firebase.js'
@@ -19,13 +18,6 @@ export const observeConnectivity = (listener) => {
     globalThis.removeEventListener?.('online', emit)
     globalThis.removeEventListener?.('offline', emit)
   }
-}
-
-export const enableTrustedDevicePersistence = () => {
-  if (!saveOfflinePersistencePreference(true)) {
-    throw new Error('El navegador no permet desar la preferència local.')
-  }
-  globalThis.location?.reload()
 }
 
 export const clearOfflineDataAndDisable = async () => {
@@ -53,6 +45,3 @@ export const synchronizePendingWrites = async () => {
   }
   await waitForPendingWrites(db)
 }
-
-export const getOfflinePersistencePreference = () =>
-  isOfflinePersistenceEnabled()

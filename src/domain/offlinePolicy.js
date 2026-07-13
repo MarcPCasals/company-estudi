@@ -1,4 +1,5 @@
 export const OFFLINE_PREFERENCE_KEY = 'company-estudi:offline-persistence'
+const FIRESTORE_CLIENT_KEY_PREFIX = 'firestore_clients_firestore/[DEFAULT]/'
 
 export const SYNC_STATE = Object.freeze({
   OFFLINE: 'offline',
@@ -44,6 +45,32 @@ export const saveOfflinePersistencePreference = (
     return true
   } catch {
     return false
+  }
+}
+
+export const disableLegacyOfflinePersistence = ({
+  projectId,
+  storage,
+} = {}) => {
+  const availableStorage = safeStorage(storage === undefined ? defaultStorage() : storage)
+  if (!availableStorage) return { available: false, removedClientKeys: 0 }
+
+  let removedClientKeys = 0
+  try {
+    availableStorage.removeItem(OFFLINE_PREFERENCE_KEY)
+    const projectPrefix = `${FIRESTORE_CLIENT_KEY_PREFIX}${String(projectId ?? '')}/`
+    if (projectId && typeof availableStorage.length === 'number' && typeof availableStorage.key === 'function') {
+      for (let index = availableStorage.length - 1; index >= 0; index -= 1) {
+        const key = availableStorage.key(index)
+        if (key?.startsWith(projectPrefix)) {
+          availableStorage.removeItem(key)
+          removedClientKeys += 1
+        }
+      }
+    }
+    return { available: true, removedClientKeys }
+  } catch {
+    return { available: false, removedClientKeys }
   }
 }
 

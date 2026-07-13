@@ -5,10 +5,8 @@ import {
   getFirestore,
   initializeFirestore,
   memoryLocalCache,
-  persistentLocalCache,
-  persistentMultipleTabManager,
 } from 'firebase/firestore'
-import { isOfflinePersistenceEnabled } from '../domain/offlinePolicy.js'
+import { disableLegacyOfflinePersistence } from '../domain/offlinePolicy.js'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -31,7 +29,7 @@ export const firebaseApp = isFirebaseConfigured
   : null
 
 export const auth = firebaseApp ? getAuth(firebaseApp) : null
-export const offlinePersistenceRequested = isOfflinePersistenceEnabled()
+export const offlinePersistenceRequested = false
 export const firebaseEmulatorsEnabled = import.meta.env.DEV
   && import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
 const emulatorAuthInstances = new WeakSet()
@@ -45,11 +43,10 @@ const connectProjectAuthEmulator = (authInstance) => {
 
 const initializeProjectFirestore = () => {
   if (!firebaseApp) return null
+  disableLegacyOfflinePersistence({ projectId: firebaseConfig.projectId })
   try {
     return initializeFirestore(firebaseApp, {
-      localCache: offlinePersistenceRequested
-        ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-        : memoryLocalCache(),
+      localCache: memoryLocalCache(),
     })
   } catch {
     return getFirestore(firebaseApp)

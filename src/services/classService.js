@@ -3,7 +3,6 @@ import {
   collection,
   getDoc,
   serverTimestamp,
-  setDoc,
   writeBatch,
   onSnapshot,
   query,
@@ -39,7 +38,8 @@ export const createTutorClass = async ({ name, course }) => {
 
   const classRef = doc(collection(firestore, 'classes'))
   const classCode = createClassCode()
-  await setDoc(classRef, {
+  const creationBatch = writeBatch(firestore)
+  creationBatch.set(classRef, {
     tutorId: tutor.uid,
     name: cleanName,
     course: cleanCourse,
@@ -49,25 +49,21 @@ export const createTutorClass = async ({ name, course }) => {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  const metadataBatch = writeBatch(firestore)
-  metadataBatch.set(doc(firestore, 'tutors', tutor.uid, 'classSecrets', classRef.id), {
+  creationBatch.set(doc(firestore, 'tutors', tutor.uid, 'classSecrets', classRef.id), {
     classId: classRef.id,
     classCode,
     credentialVersion: 1,
     createdAt: serverTimestamp(),
   })
   for (const subject of DEFAULT_SUBJECTS) {
-    metadataBatch.set(doc(firestore, 'classes', classRef.id, 'subjects', subject.id), {
+    creationBatch.set(doc(firestore, 'classes', classRef.id, 'subjects', subject.id), {
       ...subject,
       active: true,
       createdAt: serverTimestamp(),
     })
   }
-  await metadataBatch.commit()
-
-  const roomsBatch = writeBatch(firestore)
   for (const subject of DEFAULT_SUBJECTS) {
-    roomsBatch.set(doc(firestore, 'classes', classRef.id, 'rooms', subject.id), {
+    creationBatch.set(doc(firestore, 'classes', classRef.id, 'rooms', subject.id), {
       name: subject.name,
       subjectId: subject.id,
       active: true,
@@ -76,7 +72,7 @@ export const createTutorClass = async ({ name, course }) => {
       createdAt: serverTimestamp(),
     })
   }
-  await roomsBatch.commit()
+  await creationBatch.commit()
 
   return {
     classId: classRef.id,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   OFFLINE_PREFERENCE_KEY,
   SYNC_STATE,
+  disableLegacyOfflinePersistence,
   isOfflinePersistenceEnabled,
   resolveSyncState,
   saveOfflinePersistencePreference,
@@ -13,6 +14,8 @@ const createMemoryStorage = () => {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
     removeItem: (key) => values.delete(key),
+    key: (index) => [...values.keys()][index] ?? null,
+    get length() { return values.size },
   }
 }
 
@@ -37,5 +40,20 @@ describe('política de connexió i persistència', () => {
   it('falla de manera segura si no hi ha emmagatzematge', () => {
     expect(isOfflinePersistenceEnabled(null)).toBe(false)
     expect(saveOfflinePersistencePreference(true, null)).toBe(false)
+  })
+
+  it('desactiva la preferència antiga i neteja només els clients del projecte', () => {
+    const storage = createMemoryStorage()
+    storage.setItem(OFFLINE_PREFERENCE_KEY, 'enabled')
+    storage.setItem('firestore_clients_firestore/[DEFAULT]/company-estudi/client-1', 'x')
+    storage.setItem('firestore_clients_firestore/[DEFAULT]/un-altre-projecte/client-2', 'y')
+
+    expect(disableLegacyOfflinePersistence({ projectId: 'company-estudi', storage })).toEqual({
+      available: true,
+      removedClientKeys: 1,
+    })
+    expect(storage.getItem(OFFLINE_PREFERENCE_KEY)).toBeNull()
+    expect(storage.getItem('firestore_clients_firestore/[DEFAULT]/company-estudi/client-1')).toBeNull()
+    expect(storage.getItem('firestore_clients_firestore/[DEFAULT]/un-altre-projecte/client-2')).toBe('y')
   })
 })

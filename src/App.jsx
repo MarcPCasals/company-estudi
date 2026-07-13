@@ -30,8 +30,6 @@ import {
 import { SYNC_STATE } from './domain/offlinePolicy.js'
 import {
   clearOfflineDataAndDisable,
-  enableTrustedDevicePersistence,
-  getOfflinePersistencePreference,
   observeConnectivity,
   synchronizePendingWrites,
 } from './services/offlineService.js'
@@ -66,26 +64,14 @@ const SYNC_LABELS = {
 
 function OfflineStatusPanel() {
   const [online, setOnline] = useState(globalThis.navigator?.onLine ?? true)
-  const [persistent, setPersistent] = useState(getOfflinePersistencePreference())
   const [status, setStatus] = useState({ state: 'idle', message: '' })
 
   useEffect(() => observeConnectivity(setOnline), [])
 
-  const enable = () => {
-    setStatus({ state: 'loading', message: 'Activant la còpia local…' })
-    try {
-      enableTrustedDevicePersistence()
-      setPersistent(true)
-    } catch (error) {
-      setStatus({ state: 'error', message: error.message })
-    }
-  }
-
   const disable = async () => {
-    setStatus({ state: 'loading', message: 'Comprovant i esborrant la còpia local…' })
+    setStatus({ state: 'loading', message: 'Comprovant i esborrant dades locals antigues…' })
     try {
       await clearOfflineDataAndDisable()
-      setPersistent(false)
     } catch (error) {
       setStatus({ state: 'error', message: error.message })
     }
@@ -105,28 +91,21 @@ function OfflineStatusPanel() {
     <section className="offline-panel" aria-labelledby="offline-title">
       <div>
         <p className="eyebrow">Connexió i recuperació</p>
-        <h2 id="offline-title">Treball sense connexió</h2>
+        <h2 id="offline-title">Connexió segura</h2>
         <p>
-          {persistent
-            ? 'Aquest dispositiu conserva una còpia local i sincronitza els canvis quan torna la connexió.'
-            : 'La còpia local permanent està desactivada. Activa-la només en un dispositiu propi o assignat.'}
+          Les dades es desen directament a Firestore. La còpia permanent del navegador està desactivada per evitar problemes d’espai al dispositiu.
         </p>
       </div>
       <span className={`sync-badge ${online ? 'synced' : 'offline'}`} role="status">
         {online ? 'Amb connexió' : 'Sense connexió'}
       </span>
       <div className="offline-actions">
-        {!persistent && <button type="button" onClick={enable}>Activa en aquest dispositiu</button>}
-        {persistent && (
-          <>
-            <button type="button" onClick={synchronize} disabled={!online || status.state === 'loading'}>
-              Comprova la sincronització
-            </button>
-            <button type="button" className="secondary" onClick={disable} disabled={status.state === 'loading'}>
-              Esborra la còpia local
-            </button>
-          </>
-        )}
+        <button type="button" onClick={synchronize} disabled={!online || status.state === 'loading'}>
+          Comprova la sincronització
+        </button>
+        <button type="button" className="secondary" onClick={disable} disabled={status.state === 'loading'}>
+          Neteja dades locals antigues
+        </button>
       </div>
       {status.message && (
         <p className={`form-status ${status.state}`} role="status">{status.message}</p>
