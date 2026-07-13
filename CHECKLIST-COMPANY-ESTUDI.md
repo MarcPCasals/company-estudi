@@ -57,14 +57,14 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 6. Deures, treballs i exàmens
 
-- [ ] Crear «Afegir deure» ràpid: assignatura, descripció, data i abast.
-- [ ] Permetre data confirmada, per confirmar o sense data.
-- [ ] Afegir temps estimat, passos, material, notes privades i ajuda com a opcions.
-- [ ] Oferir `Planifica'l ara` després de desar.
-- [ ] Implementar els estats: per aclarir, pendent, planificat, en curs i fet.
-- [ ] Separar `Fet` de `Entregat`.
-- [ ] Permetre avanç parcial, reprogramació i data passada sense càstig.
-- [ ] Detectar duplicats sense fusionar-los automàticament.
+- [x] Crear «Afegir deure» ràpid: assignatura, descripció, data i abast.
+- [x] Permetre data confirmada, per confirmar o sense data.
+- [x] Afegir temps estimat, passos, material, notes privades i ajuda com a opcions.
+- [x] Oferir `Planifica'l ara` després de desar.
+- [x] Implementar els estats: per aclarir, pendent, planificat, en curs i fet.
+- [x] Separar `Fet` de `Entregat`.
+- [x] Permetre avanç parcial, reprogramació i data passada sense càstig.
+- [x] Detectar duplicats sense fusionar-los automàticament.
 
 ## 7. Calendari i pantalla «Avui»
 

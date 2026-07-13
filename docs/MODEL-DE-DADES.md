@@ -12,6 +12,7 @@ classes/{classId}
   officialTasks/{officialTaskId}
   students/{studentId}
     tasks/{taskId}
+      private/details
       history/{historyId}
     studySessions/{sessionId}
     personalSchedule/{occupationId}
@@ -48,8 +49,9 @@ permisos i comportaments diferents.
 
 El sistema separa tres registres diferents:
 
-- `personal_task`: pertany a un alumne, viu dins de `students/{studentId}/tasks`
-  i pot contenir una nota privada.
+- `personal_task`: pertany a un alumne i viu dins de `students/{studentId}/tasks`.
+  Les notes privades no són camps d'aquest document: viuen a
+  `tasks/{taskId}/private/details`, que el tutor no pot llegir.
 - `community_candidate`: és una coincidència agregada encara no confirmada. Viu
   a `taskCandidates` i no conté identitats ni notes privades.
 - `official_task`: la confirma el tutor i viu a `officialTasks`. Que sigui oficial
@@ -61,11 +63,14 @@ i l'alumne decideix si incorpora la tasca oficial al seu espai personal.
 
 ### Estat i entrega
 
+Cada tasca personal indica també si és un deure, un treball o un examen, i pot
+incloure temps estimat, passos, material, petició d'ajuda i necessitat d'entrega.
 L'estat de treball personal pot ser:
 
 - `needs_clarification`: falta concretar què s'ha de fer.
 - `pending`: està clar, però encara no s'ha planificat.
-- `planned`: té almenys una sessió prevista.
+- `planned`: té almenys una sessió prevista, encara que la vista de calendari es
+  construeixi en un bloc posterior.
 - `in_progress`: l'alumne ja hi està treballant.
 - `done`: la feina està acabada.
 
@@ -102,6 +107,8 @@ tutor només podrà veure un resum de disponibilitat, mai el detall.
 ## Decisions de privacitat
 
 - Les ocupacions personals queden dins de l'espai privat de l'alumne.
+- Les notes privades de les tasques són documents separats i les regles de
+  Firestore només en permeten l'accés a l'alumne propietari.
 - El tutor pot veure tasques i sessions necessàries per a l'acompanyament.
 - Les sales són comunitàries per als membres de la classe.
 - Les propostes comunitàries no conserven la identitat de qui ha creat tasques semblants.

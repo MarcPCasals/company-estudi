@@ -6,12 +6,17 @@ import {
   TASK_HISTORY_EVENT,
   TASK_RECORD_KIND,
   TASK_STATUS,
+  TASK_TYPE,
   changeTaskDeliveryStatus,
+  changeTaskProgress,
   createCommunityTaskCandidateRecord,
   createDeadline,
   createOfficialTaskRecord,
   createPersonalTaskRecord,
+  createPrivateTaskDetails,
+  createTaskFingerprint,
   createTaskHistoryEvent,
+  findPotentialDuplicateTasks,
   transitionTaskStatus,
   dataPaths,
 } from './dataModel.js'
@@ -46,7 +51,7 @@ describe('model de dades', () => {
     )
   })
 
-  it('manté les notes privades només a la tasca personal', () => {
+  it('separa les notes privades del document acadèmic visible pel tutor', () => {
     const commonFields = {
       classId: 'class-1',
       subjectId: 'catala',
@@ -55,7 +60,7 @@ describe('model de dades', () => {
     const personal = createPersonalTaskRecord({
       ...commonFields,
       ownerStudentId: 'student-1',
-      privateNote: 'No entenc l’exercici 4.',
+      taskType: TASK_TYPE.HOMEWORK,
     })
     const candidate = createCommunityTaskCandidateRecord({
       ...commonFields,
@@ -67,7 +72,10 @@ describe('model de dades', () => {
     })
 
     expect(personal.recordKind).toBe(TASK_RECORD_KIND.PERSONAL)
-    expect(personal.privateNote).toBe('No entenc l’exercici 4.')
+    expect(personal).not.toHaveProperty('privateNote')
+    expect(createPrivateTaskDetails({ privateNote: 'No entenc l’exercici 4.' })).toEqual({
+      privateNote: 'No entenc l’exercici 4.',
+    })
     expect(personal.status).toBe(TASK_STATUS.PENDING)
     expect(personal.deliveryStatus).toBe(DELIVERY_STATUS.NOT_DELIVERED)
     expect(candidate.recordKind).toBe(TASK_RECORD_KIND.COMMUNITY_CANDIDATE)
@@ -75,6 +83,28 @@ describe('model de dades', () => {
     expect(candidate).not.toHaveProperty('privateNote')
     expect(official.recordKind).toBe(TASK_RECORD_KIND.OFFICIAL)
     expect(official).not.toHaveProperty('privateNote')
+  })
+
+  it('modela deure, treball o examen amb opcions de planificació', () => {
+    const task = createPersonalTaskRecord({
+      classId: 'class-1',
+      ownerStudentId: 'student-1',
+      subjectId: 'catala',
+      title: 'Preparar l’examen del tema 2',
+      taskType: TASK_TYPE.EXAM,
+      estimatedMinutes: 90,
+      steps: ['Repàs de teoria', 'Exercicis'],
+      material: 'Llibreta i dossier',
+      helpRequested: true,
+      requiresDelivery: false,
+    })
+    expect(task).toMatchObject({
+      taskType: 'exam',
+      estimatedMinutes: 90,
+      steps: ['Repàs de teoria', 'Exercicis'],
+      helpRequested: true,
+      deliveryStatus: DELIVERY_STATUS.NOT_REQUIRED,
+    })
   })
 
   it('registra una transició vàlida sense interpretar-la com una penalització', () => {
@@ -168,6 +198,33 @@ describe('model de dades', () => {
       at: '2026-09-18T21:59:00.000Z',
       timezone: 'Europe/Andorra',
     })
+  })
+
+  it('detecta un possible duplicat però retorna els dos registres per separat', () => {
+    const deadline = createDeadline({ certainty: DEADLINE_CERTAINTY.CONFIRMED, at: '2026-09-18T21:59:00.000Z' })
+    const candidate = { subjectId: 'catala', title: 'Exercicis 4 al 8', deadline }
+    const existing = {
+      id: 'task-existing',
+      ...candidate,
+      title: 'Fer exercicis 4-8',
+      status: TASK_STATUS.PENDING,
+      deliveryStatus: DELIVERY_STATUS.NOT_DELIVERED,
+    }
+    expect(createTaskFingerprint(candidate)).toContain('catala|exercicis 4 al 8|2026-09-18')
+    expect(findPotentialDuplicateTasks(candidate, [existing])).toEqual([existing])
+  })
+
+  it('actualitza el progrés parcial sense donar la tasca per feta', () => {
+    const result = changeTaskProgress({
+      classId: 'class-1',
+      ownerStudentId: 'student-1',
+      taskId: 'task-1',
+      fromProgressPercent: 0,
+      toProgressPercent: 50,
+      currentStatus: TASK_STATUS.PLANNED,
+    })
+    expect(result.taskChanges).toMatchObject({ progressPercent: 50, status: TASK_STATUS.IN_PROGRESS })
+    expect(result.historyEvent.eventType).toBe(TASK_HISTORY_EVENT.PROGRESS_UPDATED)
   })
 
   it('rebutja identificadors i terminis incoherents', () => {

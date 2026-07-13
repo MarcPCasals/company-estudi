@@ -33,6 +33,12 @@ export const TASK_RECORD_KIND = Object.freeze({
   OFFICIAL: 'official_task',
 })
 
+export const TASK_TYPE = Object.freeze({
+  HOMEWORK: 'homework',
+  PROJECT: 'project',
+  EXAM: 'exam',
+})
+
 export const TASK_STATUS = Object.freeze({
   NEEDS_CLARIFICATION: 'needs_clarification',
   PENDING: 'pending',
@@ -121,6 +127,32 @@ const cleanTaskText = (value, label) => {
   return cleanValue
 }
 
+const cleanOptionalTaskText = (value, label, maximumLength = 500) => {
+  const cleanValue = String(value ?? '').trim().replace(/\s+/g, ' ')
+  if (cleanValue.length > maximumLength) {
+    throw new Error(`${label} no pot superar els ${maximumLength} caràcters.`)
+  }
+  return cleanValue
+}
+
+const normalizeEstimatedMinutes = (value) => {
+  if (value === '' || value === null || value === undefined) return null
+  const minutes = Number(value)
+  if (!Number.isInteger(minutes) || minutes < 5 || minutes > 1200) {
+    throw new Error('El temps estimat ha de ser un nombre enter entre 5 i 1.200 minuts.')
+  }
+  return minutes
+}
+
+const normalizeSteps = (steps = []) => {
+  if (!Array.isArray(steps) || steps.length > 20) {
+    throw new Error('Una tasca pot tenir com a màxim 20 passos.')
+  }
+  return steps
+    .map((step) => cleanOptionalTaskText(step, 'Cada pas', 160))
+    .filter(Boolean)
+}
+
 const taskBase = ({ classId, subjectId, title, deadline }) => ({
   classId: assertDocumentId(classId, 'classId'),
   subjectId: assertDocumentId(subjectId, 'subjectId'),
@@ -133,16 +165,73 @@ export const createPersonalTaskRecord = ({
   ownerStudentId,
   subjectId,
   title,
+  taskType = TASK_TYPE.HOMEWORK,
   deadline = createDeadline(),
-  privateNote = '',
+  estimatedMinutes = null,
+  steps = [],
+  material = '',
+  helpRequested = false,
+  requiresDelivery = true,
   lifecycle = createTaskLifecycle(),
-}) => ({
-  ...taskBase({ classId, subjectId, title, deadline }),
-  recordKind: TASK_RECORD_KIND.PERSONAL,
-  ownerStudentId: assertDocumentId(ownerStudentId, 'ownerStudentId'),
-  privateNote: String(privateNote).trim(),
-  officialTaskId: null,
-  ...createTaskLifecycle(lifecycle),
+}) => {
+  assertEnumValue(taskType, TASK_TYPE, 'L’abast de la tasca')
+  if (typeof helpRequested !== 'boolean' || typeof requiresDelivery !== 'boolean') {
+    throw new Error('Les opcions de la tasca no són vàlides.')
+  }
+  const normalizedLifecycle = createTaskLifecycle({
+    ...lifecycle,
+    deliveryStatus: requiresDelivery
+      ? (lifecycle.deliveryStatus ?? DELIVERY_STATUS.NOT_DELIVERED)
+      : DELIVERY_STATUS.NOT_REQUIRED,
+  })
+  return {
+    ...taskBase({ classId, subjectId, title, deadline }),
+    recordKind: TASK_RECORD_KIND.PERSONAL,
+    ownerStudentId: assertDocumentId(ownerStudentId, 'ownerStudentId'),
+    taskType,
+    estimatedMinutes: normalizeEstimatedMinutes(estimatedMinutes),
+    steps: normalizeSteps(steps),
+    material: cleanOptionalTaskText(material, 'El material'),
+    helpRequested,
+    requiresDelivery,
+    officialTaskId: null,
+    ...normalizedLifecycle,
+  }
+}
+
+export const createPrivateTaskDetails = ({ privateNote = '' } = {}) => ({
+  privateNote: cleanOptionalTaskText(privateNote, 'La nota privada', 1000),
+})
+
+const normalizeFingerprintText = (value) => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLocaleLowerCase('ca')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim()
+
+export const createTaskFingerprint = ({ subjectId, title, deadline }) => {
+  const datePart = deadline?.at ? String(deadline.at).slice(0, 10) : deadline?.certainty ?? 'without_date'
+  return `${assertDocumentId(subjectId, 'subjectId')}|${normalizeFingerprintText(title)}|${datePart}`
+}
+
+const tokenSimilarity = (left, right) => {
+  const leftTokens = new Set(normalizeFingerprintText(left).split(' ').filter(Boolean))
+  const rightTokens = new Set(normalizeFingerprintText(right).split(' ').filter(Boolean))
+  if (leftTokens.size === 0 || rightTokens.size === 0) return 0
+  const intersection = [...leftTokens].filter((token) => rightTokens.has(token)).length
+  return intersection / new Set([...leftTokens, ...rightTokens]).size
+}
+
+export const findPotentialDuplicateTasks = (candidate, tasks = []) => tasks.filter((task) => {
+  if (task.subjectId !== candidate.subjectId) return false
+  if (task.status === TASK_STATUS.DONE && task.deliveryStatus === DELIVERY_STATUS.DELIVERED) return false
+  const sameDate = (task.deadline?.at ?? null) === (candidate.deadline?.at ?? null)
+    || (task.deadline?.at && candidate.deadline?.at
+      && String(task.deadline.at).slice(0, 10) === String(candidate.deadline.at).slice(0, 10))
+  const sameFingerprint = task.fingerprint
+    && task.fingerprint === createTaskFingerprint(candidate)
+  return sameFingerprint || (sameDate && tokenSimilarity(task.title, candidate.title) >= 0.6)
 })
 
 export const createCommunityTaskCandidateRecord = ({
@@ -282,6 +371,41 @@ export const changeTaskDeliveryStatus = ({
       actorId,
       from: fromDeliveryStatus,
       to: toDeliveryStatus,
+      happenedAt,
+    }),
+  }
+}
+
+export const changeTaskProgress = ({
+  classId,
+  ownerStudentId,
+  taskId,
+  fromProgressPercent,
+  toProgressPercent,
+  currentStatus,
+  actorId = ownerStudentId,
+  happenedAt = new Date().toISOString(),
+}) => {
+  createTaskLifecycle({ status: currentStatus, progressPercent: fromProgressPercent })
+  createTaskLifecycle({ status: currentStatus, progressPercent: toProgressPercent })
+  const nextStatus = toProgressPercent > 0 && currentStatus !== TASK_STATUS.DONE
+    ? TASK_STATUS.IN_PROGRESS
+    : currentStatus
+  return {
+    taskChanges: {
+      progressPercent: toProgressPercent,
+      status: nextStatus,
+      updatedAt: happenedAt,
+    },
+    historyEvent: createTaskHistoryEvent({
+      classId,
+      ownerStudentId,
+      taskId,
+      eventType: TASK_HISTORY_EVENT.PROGRESS_UPDATED,
+      actorRole: TASK_ACTOR_ROLE.STUDENT,
+      actorId,
+      from: fromProgressPercent,
+      to: toProgressPercent,
       happenedAt,
     }),
   }

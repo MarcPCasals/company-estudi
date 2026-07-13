@@ -18,6 +18,8 @@ La primera base funcional implementa:
 - arquitectura compatible amb el pla Spark, sense Cloud Functions ni facturació.
 - creació de classes, alumnes, codis, sales optatives i incorporació inicial;
 - regeneració de credencials i canvi de classe amb identitat d'alumne estable;
+- gestió de deures, treballs i exàmens amb terminis incerts, passos, progrés, planificació, ajuda i entrega separada;
+- notes de tasca en documents privats i avisos de possibles duplicats sense fusions automàtiques;
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 

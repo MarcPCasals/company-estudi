@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { WEEK_DAYS } from '../data/defaultSchedule.js'
 import { saveStudentPlanningSetup } from '../services/planningSetupService.js'
+import TaskWorkspace from './TaskWorkspace.jsx'
 
 const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '' })
 
@@ -40,6 +41,7 @@ export default function StudentOnboarding({ session, onLogout }) {
   }
 
   return (
+    <div className="student-space">
     <section className="panel student-onboarding" aria-labelledby="student-onboarding-title">
       <div className="panel-heading">
         <div>
@@ -106,5 +108,9 @@ export default function StudentOnboarding({ session, onLogout }) {
       </form>
       {status.message && <p className={`form-status ${status.state}`} role="status">{status.message}</p>}
     </section>
+    <section className="panel">
+      <TaskWorkspace session={session} />
+    </section>
+    </div>
   )
 }

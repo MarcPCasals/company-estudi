@@ -92,6 +92,16 @@ service cloud.firestore {
         && request.resource.data.ownerStudentId == resource.data.ownerStudentId;
     }
 
+    function hasSafeTaskFields() {
+      return request.resource.data.keys().hasOnly([
+        'classId', 'ownerStudentId', 'subjectId', 'title', 'deadline',
+        'recordKind', 'officialTaskId', 'taskType', 'estimatedMinutes',
+        'steps', 'material', 'helpRequested', 'requiresDelivery', 'status',
+        'deliveryStatus', 'progressPercent', 'fingerprint', 'activeSessionId',
+        'nextPlannedSessionAt', 'plannedDurationMinutes', 'createdAt', 'updatedAt'
+      ]);
+    }
+
     match /classes/{classId} {
       allow create: if signedInWithGoogle()
         && request.resource.data.tutorId == request.auth.uid;
@@ -116,10 +126,18 @@ service cloud.firestore {
           allow read: if isTutor(classId)
             || hasCurrentStudentAccess(classId, studentId);
           allow create: if hasCurrentStudentAccess(classId, studentId)
-            && ownsIncomingStudentData(classId, studentId);
+            && ownsIncomingStudentData(classId, studentId)
+            && hasSafeTaskFields();
           allow update: if hasCurrentStudentAccess(classId, studentId)
-            && keepsStudentOwnership(classId, studentId);
+            && keepsStudentOwnership(classId, studentId)
+            && hasSafeTaskFields();
           allow delete: if hasCurrentStudentAccess(classId, studentId);
+
+          match /private/{privateDocumentId} {
+            allow read, delete: if hasCurrentStudentAccess(classId, studentId);
+            allow create, update: if hasCurrentStudentAccess(classId, studentId)
+              && request.resource.data.keys().hasOnly(['privateNote', 'updatedAt']);
+          }
 
           match /history/{historyId} {
             allow read: if isTutor(classId)
