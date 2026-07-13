@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectCommonTasks, normalizeCommunityPost } from './communityPolicy.js'
+import { buildCommonTaskCorrection, detectCommonTasks, normalizeCommunityPost } from './communityPolicy.js'
 
 describe('política comunitària', () => {
   it('impedeix avisos d’alumne i manté autoria visible', () => {
@@ -25,5 +25,21 @@ describe('política comunitària', () => {
     const tasksByStudent = Object.fromEntries(students.slice(0, 4).map((student) => [student.id, [task]]))
     tasksByStudent.s0 = [task, task]
     expect(detectCommonTasks({ students, tasksByStudent })).toEqual([])
+  })
+
+  it('converteix una correcció de data del tutor en un termini confirmat', () => {
+    const correction = buildCommonTaskCorrection({
+      candidate: { title: 'Exercicis', deadline: null },
+      title: 'Exercicis corregits',
+      deadlineAt: '2026-07-15T23:59:00+02:00',
+    })
+    expect(correction).toEqual({
+      title: 'Exercicis corregits',
+      deadline: {
+        certainty: 'confirmed',
+        at: '2026-07-15T21:59:00.000Z',
+        timezone: 'Europe/Andorra',
+      },
+    })
   })
 })

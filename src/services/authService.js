@@ -2,12 +2,13 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithCredential,
   signInWithPopup,
   signOut,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { deriveStudentCredentials } from '../domain/technicalCredentials.js'
-import { auth, db } from '../lib/firebase.js'
+import { auth, db, firebaseEmulatorsEnabled } from '../lib/firebase.js'
 
 const requireAuth = () => {
   if (!auth) {
@@ -20,6 +21,25 @@ export const signInTutorWithGoogle = async () => {
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({ prompt: 'select_account' })
   return signInWithPopup(requireAuth(), provider)
+}
+
+const base64Url = (value) => globalThis.btoa(JSON.stringify(value))
+  .replace(/=/g, '')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+
+export const signInTestTutor = async () => {
+  if (!firebaseEmulatorsEnabled) throw new Error('L’accés de prova només existeix amb els emuladors locals.')
+  const now = Math.floor(Date.now() / 1000)
+  const idToken = `${base64Url({ alg: 'none', typ: 'JWT' })}.${base64Url({
+    sub: 'tutor-validacio-b11',
+    email: 'tutor.validacio@example.test',
+    name: 'Tutor de validacio',
+    aud: 'company-estudi',
+    iat: now,
+    exp: now + 3600,
+  })}.`
+  return signInWithCredential(requireAuth(), GoogleAuthProvider.credential(idToken))
 }
 
 export const exchangeStudentAccessCodes = async ({ classCode, studentCode }) => {

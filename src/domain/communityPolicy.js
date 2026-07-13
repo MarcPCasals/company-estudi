@@ -28,6 +28,18 @@ export const detectCommonTasks = ({ students = [], tasksByStudent = {}, ratio = 
   return [...groups.values()].filter((group) => group.matchingStudents.size >= requiredCount).map(({ matchingStudents, ...group }) => ({ ...group, count: matchingStudents.size, requiredCount, classSize: activeIds.size }))
 }
 
+export const buildCommonTaskCorrection = ({ candidate, title, deadlineAt }) => {
+  const cleanTitle = String(title ?? candidate.title ?? '').trim().replace(/\s+/g, ' ')
+  if (cleanTitle.length < 2 || cleanTitle.length > 200) throw new Error('El títol corregit no és vàlid.')
+  if (!deadlineAt) return { title: cleanTitle, deadline: candidate.deadline ?? null }
+  const date = new Date(deadlineAt)
+  if (Number.isNaN(date.getTime())) throw new Error('La data corregida no és vàlida.')
+  return {
+    title: cleanTitle,
+    deadline: { certainty: 'confirmed', at: date.toISOString(), timezone: 'Europe/Andorra' },
+  }
+}
+
 export const normalizeNotificationSettings = ({ mode, quietStart, quietEnd }) => {
   if (!['instant', 'daily_summary', 'disabled'].includes(mode)) throw new Error('El mode de notificacions no és vàlid.')
   const pattern = /^([01]\d|2[0-3]):[0-5]\d$/

@@ -115,14 +115,14 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 11. Validació funcional completa
 
-- [ ] Provar l'alta de classe i l'accés amb codis.
-- [ ] Provar el flux complet d'un deure i d'un examen.
-- [ ] Provar calendari, extraescolars i reprogramació.
-- [ ] Provar una proposta comunitària i una correcció de data.
-- [ ] Provar un dubte a una sala i la moderació.
-- [ ] Provar revisió setmanal i feedback tutorial.
-- [ ] Provar els fluxos amb 5-8 alumnes i amb el tutor.
-- [ ] Corregir problemes funcionals abans de decidir l'aspecte final.
+- [x] Provar l'alta de classe i l'accés amb codis.
+- [x] Provar el flux complet d'un deure i d'un examen.
+- [x] Provar calendari, extraescolars i reprogramació.
+- [x] Provar una proposta comunitària i una correcció de data.
+- [x] Provar un dubte a una sala i la moderació.
+- [x] Provar revisió setmanal i feedback tutorial.
+- [x] Provar els fluxos amb 5-8 alumnes i amb el tutor.
+- [x] Corregir problemes funcionals abans de decidir l'aspecte final.
 
 ## 12. Disseny visual i maquetació
 

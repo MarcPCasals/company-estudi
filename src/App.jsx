@@ -12,6 +12,7 @@ import {
 import { demoProfile } from './data/demoProfile.js'
 import {
   firebaseProjectId,
+  firebaseEmulatorsEnabled,
   isFirebaseConfigured,
 } from './lib/firebase.js'
 import {
@@ -19,6 +20,7 @@ import {
   loadCurrentStudentContext,
   observeCurrentUser,
   signInTutorWithGoogle,
+  signInTestTutor,
   signOutCurrentUser,
 } from './services/authService.js'
 import {
@@ -434,6 +436,16 @@ function TutorLoginPanel() {
     }
   }
 
+  const loginForValidation = async () => {
+    setStatus({ state: 'loading', message: 'Preparant el tutor de validació…' })
+    try {
+      await signInTestTutor()
+      setStatus({ state: 'success', message: 'Tutor local de validació iniciat.' })
+    } catch (error) {
+      setStatus({ state: 'error', message: tutorLoginErrorMessage(error) })
+    }
+  }
+
   const logout = async () => {
     setStatus({ state: 'loading', message: 'Tancant la sessió…' })
     try {
@@ -468,6 +480,11 @@ function TutorLoginPanel() {
             <span aria-hidden="true" className="google-mark">G</span>
             Continua amb Google
           </button>
+          {firebaseEmulatorsEnabled && (
+            <button type="button" className="secondary" disabled={status.state === 'loading'} onClick={loginForValidation}>
+              Entra com a tutor de validació
+            </button>
+          )}
         </>
       )}
 
