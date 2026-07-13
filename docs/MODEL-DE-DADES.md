@@ -97,6 +97,8 @@ Això evita crear dos elements diferents per al mateix deure.
 
 És un bloc de treball planificat al calendari. Referencia una tasca, però té
 inici, durada i progrés propis. Moure una sessió no canvia el termini de la tasca.
+Les propostes de franja només existeixen a la interfície fins que l'alumne les
+confirma. Quan una tasca es marca com a feta, la sessió pendent queda cancel·lada.
 
 ### Ocupació personal
 

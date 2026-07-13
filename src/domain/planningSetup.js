@@ -2,6 +2,7 @@ import { DEFAULT_SCHOOL_SCHEDULE, WEEK_DAYS } from '../data/defaultSchedule.js'
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/
 const DAY_IDS = new Set(WEEK_DAYS.map((day) => day.id))
+const OCCUPATION_TYPES = new Set(['extracurricular', 'meal', 'other'])
 
 const assertMinutes = (value, label) => {
   const minutes = Number(value)
@@ -42,12 +43,14 @@ export const normalizePlanningSetup = ({
     const start = assertTime(activity.start, 'L’hora d’inici')
     const end = assertTime(activity.end, 'L’hora final')
     const label = String(activity.label ?? '').trim().replace(/\s+/g, ' ')
+    const type = String(activity.type ?? 'other')
     if (!DAY_IDS.has(day)) throw new Error('El dia de l’ocupació no és vàlid.')
     if (start >= end) throw new Error('L’ocupació ha d’acabar després de començar.')
     if (label.length < 2 || label.length > 80) {
       throw new Error('El nom de l’ocupació ha de tenir entre 2 i 80 caràcters.')
     }
-    return { id: `activity-${index}`, day, start, end, label }
+    if (!OCCUPATION_TYPES.has(type)) throw new Error('El tipus d’ocupació no és vàlid.')
+    return { id: `activity-${index}`, day, start, end, label, type }
   })
 
   const availableAfterByDay = Object.fromEntries(
@@ -69,6 +72,21 @@ export const normalizePlanningSetup = ({
   if (weekend.enabled && weekend.start >= weekend.end) {
     throw new Error('La disponibilitat del cap de setmana no és coherent.')
   }
+  const routineEvents = WEEK_DAYS.slice(0, 5).flatMap(({ id }) => {
+    const schoolEndsAt = schoolSchedule[id]?.schoolEndsAt
+      ?? DEFAULT_SCHOOL_SCHEDULE[id].schoolEndsAt
+    const travelEnd = addMinutesToTime(schoolEndsAt, cleanTravelMinutes)
+    const restEnd = addMinutesToTime(travelEnd, cleanRestMinutes)
+    const events = []
+    if (cleanTravelMinutes > 0) {
+      events.push({ id: `travel-${id}`, day: id, start: schoolEndsAt, end: travelEnd, label: 'Trajecte', type: 'travel' })
+    }
+    if (cleanRestMinutes > 0) {
+      events.push({ id: `rest-${id}`, day: id, start: travelEnd, end: restEnd, label: 'Descans', type: 'rest' })
+    }
+    return events
+  })
+  const personalEvents = [...routineEvents, ...cleanActivities]
 
   return {
     privateSettings: {
@@ -77,11 +95,11 @@ export const normalizePlanningSetup = ({
       weekend,
       activities: cleanActivities,
     },
-    personalEvents: cleanActivities,
+    personalEvents,
     availabilitySummary: {
       availableAfterByDay,
       weekend,
-      blockedSlots: cleanActivities.map(({ day, start, end }) => ({ day, start, end })),
+      blockedSlots: personalEvents.map(({ day, start, end }) => ({ day, start, end })),
     },
   }
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { WEEK_DAYS } from '../data/defaultSchedule.js'
-import { saveStudentPlanningSetup } from '../services/planningSetupService.js'
+import { loadStudentPlanningSetup, saveStudentPlanningSetup } from '../services/planningSetupService.js'
 import TaskWorkspace from './TaskWorkspace.jsx'
+import CalendarWorkspace from './CalendarWorkspace.jsx'
 
-const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '' })
+const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '', type: 'extracurricular' })
 
 export default function StudentOnboarding({ session, onLogout }) {
   const [travelMinutes, setTravelMinutes] = useState(15)
@@ -13,6 +14,23 @@ export default function StudentOnboarding({ session, onLogout }) {
   const [weekendEnd, setWeekendEnd] = useState('18:00')
   const [activities, setActivities] = useState([])
   const [status, setStatus] = useState({ state: 'idle', message: '' })
+
+  useEffect(() => {
+    loadStudentPlanningSetup({ classId: session.classId, studentId: session.studentId })
+      .then((setup) => {
+        if (!setup) return
+        setTravelMinutes(setup.travelMinutes ?? 15)
+        setRestMinutes(setup.restMinutes ?? 30)
+        setWeekendEnabled(setup.weekend?.enabled ?? true)
+        setWeekendStart(setup.weekend?.start ?? '10:00')
+        setWeekendEnd(setup.weekend?.end ?? '18:00')
+        setActivities((setup.activities ?? []).map((activity) => ({
+          ...activity,
+          type: activity.type ?? 'other',
+        })))
+      })
+      .catch((error) => setStatus({ state: 'error', message: error.message }))
+  }, [session.classId, session.studentId])
 
   const updateActivity = (index, field, value) => setActivities((current) =>
     current.map((activity, activityIndex) => activityIndex === index
@@ -91,6 +109,11 @@ export default function StudentOnboarding({ session, onLogout }) {
           </div>
           {activities.map((activity, index) => (
             <div className="activity-row" key={`${index}-${activity.day}`}>
+              <select aria-label="Tipus" value={activity.type} onChange={(event) => updateActivity(index, 'type', event.target.value)}>
+                <option value="extracurricular">Extraescolar</option>
+                <option value="meal">Àpat</option>
+                <option value="other">Altres</option>
+              </select>
               <select aria-label="Dia" value={activity.day} onChange={(event) => updateActivity(index, 'day', event.target.value)}>
                 {WEEK_DAYS.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
               </select>
@@ -107,6 +130,9 @@ export default function StudentOnboarding({ session, onLogout }) {
         </button>
       </form>
       {status.message && <p className={`form-status ${status.state}`} role="status">{status.message}</p>}
+    </section>
+    <section className="panel">
+      <CalendarWorkspace session={session} />
     </section>
     <section className="panel">
       <TaskWorkspace session={session} />

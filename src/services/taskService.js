@@ -125,12 +125,22 @@ export const createStudentTask = async ({ classId, studentId, input }) => {
   return { id: taskRef.id, ...task }
 }
 
-const commitTaskChange = async ({ task, taskChanges, historyEvent }) => {
+const commitTaskChange = async ({ task, taskChanges, historyEvent, sessionChanges = null }) => {
   const batch = writeBatch(requireFirestore())
   batch.update(taskReference(task.classId, task.ownerStudentId, task.id), {
     ...taskChanges,
     updatedAt: serverTimestamp(),
   })
+  if (sessionChanges && task.activeSessionId) {
+    batch.update(doc(
+      requireFirestore(),
+      'classes', task.classId, 'students', task.ownerStudentId,
+      'studySessions', task.activeSessionId,
+    ), {
+      ...sessionChanges,
+      updatedAt: serverTimestamp(),
+    })
+  }
   batch.set(historyReference(task.classId, task.ownerStudentId, task.id), historyEvent)
   await batch.commit()
 }
@@ -149,7 +159,13 @@ export const updateStudentTaskStatus = async (task, toStatus, reason = '') => {
     && task.deliveryStatus === DELIVERY_STATUS.DELIVERED) {
     transition.taskChanges.deliveryStatus = DELIVERY_STATUS.NOT_DELIVERED
   }
-  await commitTaskChange({ task, ...transition })
+  await commitTaskChange({
+    task,
+    ...transition,
+    sessionChanges: toStatus === TASK_STATUS.DONE && task.activeSessionId
+      ? { state: 'cancelled', cancellationReason: 'task_done' }
+      : null,
+  })
 }
 
 export const updateStudentTaskProgress = async (task, progressPercent) => {
@@ -212,16 +228,18 @@ export const planStudentTask = async (task, plan) => {
     happenedAt: now,
   })
   const batch = writeBatch(firestore)
-  batch.set(sessionRef, {
+  const sessionRecord = {
     classId: task.classId,
     ownerStudentId: task.ownerStudentId,
     taskId: task.id,
     scheduledAt: normalizedPlan.scheduledAt,
     durationMinutes: normalizedPlan.durationMinutes,
     state: 'planned',
-    createdAt: serverTimestamp(),
+    cancellationReason: null,
     updatedAt: serverTimestamp(),
-  }, { merge: true })
+  }
+  if (!isReschedule) sessionRecord.createdAt = serverTimestamp()
+  batch.set(sessionRef, sessionRecord, { merge: true })
   batch.update(taskReference(task.classId, task.ownerStudentId, task.id), {
     activeSessionId: sessionRef.id,
     nextPlannedSessionAt: normalizedPlan.scheduledAt,

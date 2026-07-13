@@ -20,6 +20,8 @@ La primera base funcional implementa:
 - regeneració de credencials i canvi de classe amb identitat d'alumne estable;
 - gestió de deures, treballs i exàmens amb terminis incerts, passos, progrés, planificació, ajuda i entrega separada;
 - notes de tasca en documents privats i avisos de possibles duplicats sense fusions automàtiques;
+- pantalla «Avui», calendari setmanal i propostes de sessions que sempre requereixen confirmació;
+- ocupacions recurrents privades i planificació que reserva descans i temps lliure;
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 

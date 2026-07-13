@@ -1,5 +1,6 @@
 import {
   doc,
+  getDoc,
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore'
@@ -22,8 +23,16 @@ export const saveStudentPlanningSetup = async ({
     completedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  for (let index = 0; index < 10; index += 1) {
-    batch.delete(doc(db, ...studentPath, 'personalSchedule', `activity-${index}`))
+  const previousEventIds = [
+    ...Array.from({ length: 10 }, (_, index) => `activity-${index}`),
+    ...['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+      .flatMap((day) => [`travel-${day}`, `rest-${day}`]),
+  ]
+  const nextEventIds = new Set(normalized.personalEvents.map((event) => event.id))
+  for (const eventId of previousEventIds) {
+    if (!nextEventIds.has(eventId)) {
+      batch.delete(doc(db, ...studentPath, 'personalSchedule', eventId))
+    }
   }
   for (const event of normalized.personalEvents) {
     batch.set(doc(db, ...studentPath, 'personalSchedule', event.id), {
@@ -41,4 +50,13 @@ export const saveStudentPlanningSetup = async ({
   })
   await batch.commit()
   return normalized
+}
+
+export const loadStudentPlanningSetup = async ({ classId, studentId }) => {
+  if (!db) throw new Error('Firestore no està configurat.')
+  const snapshot = await getDoc(doc(
+    db,
+    'classes', classId, 'students', studentId, 'private', 'planning',
+  ))
+  return snapshot.exists() ? snapshot.data() : null
 }

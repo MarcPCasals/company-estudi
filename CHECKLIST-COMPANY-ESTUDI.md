@@ -71,13 +71,13 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 - [x] Mostrar per defecte només el temps útil fora de l'escola.
 - [x] Dilluns, dimarts, dijous i divendres des de les 17 h; dimecres des de les 14 h.
 - [x] Fer configurable el cap de setmana.
-- [ ] Separar terminis, sessions de treball i ocupacions personals.
-- [ ] Afegir extraescolars recurrents, trajectes, àpats i descans.
-- [ ] Proposar franges realistes sense omplir tot el temps lliure.
-- [ ] No moure ni afegir sessions sense confirmació.
-- [ ] Crear «Avui» amb: proper pas, línia temporal, entregues i tasques per planificar.
-- [ ] Crear la vista setmanal de dilluns a diumenge.
-- [ ] Adaptar-la a iPad horitzontal, iPad vertical i ordinador.
+- [x] Separar terminis, sessions de treball i ocupacions personals.
+- [x] Afegir extraescolars recurrents, trajectes, àpats i descans.
+- [x] Proposar franges realistes sense omplir tot el temps lliure.
+- [x] No moure ni afegir sessions sense confirmació.
+- [x] Crear «Avui» amb: proper pas, línia temporal, entregues i tasques per planificar.
+- [x] Crear la vista setmanal de dilluns a diumenge.
+- [x] Adaptar-la a iPad horitzontal, iPad vertical i ordinador.
 
 ## 8. Espai del tutor i avaluació formadora
 
