@@ -222,6 +222,48 @@ button:disabled {
 .student-goal>span { color:#64748b; font-size:.8rem; font-weight:750; text-transform:uppercase; }
 .student-suggestion small { display:block; margin-top:.5rem; color:#475569; }
 
+.community-space,.tutor-community-panel { display:grid; gap:1rem; }
+.tutor-community-panel { margin-top:1.25rem; padding-top:1.25rem; border-top:2px solid #cbd5e1; }
+.community-heading { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.community-heading h2,.community-space h3,.tutor-community-panel h3 { margin:0; }
+.room-cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.5rem; }
+.room-card { position:relative; min-height:58px; padding:.55rem; color:#334155; border-color:#cbd5e1; background:white; text-align:left; }
+.room-card.active { color:white; background:#344767; }
+.room-card b { position:absolute; top:-.4rem; right:-.3rem; min-width:1.4rem; padding:.15rem .35rem; border-radius:999px; color:white; background:#dc2626; text-align:center; }
+.community-room { display:grid; gap:.8rem; }
+.community-toolbar { display:flex; gap:.6rem; align-items:center; }
+.community-toolbar input { flex:1; }
+.community-toolbar input,.community-post-form input,.community-post-form select,.community-post-form textarea,.reply-box input,.community-side-grid textarea,.community-side-grid input,.community-side-grid select,.private-question-inbox textarea,.common-task-review input { min-width:0; padding:.65rem; border:1px solid #cbd5e1; border-radius:.5rem; font:inherit; }
+.community-post-form { display:grid; grid-template-columns:160px 1fr auto; gap:.55rem; padding:.8rem; border:1px solid #e2e8f0; border-radius:.6rem; background:#f8fafc; }
+.community-post-form textarea { grid-column:1 / -2; }
+.community-posts { display:grid; gap:.75rem; }
+.community-post { display:grid; gap:.6rem; padding:.85rem; border:1px solid #dbe1e8; border-radius:.65rem; background:white; }
+.community-post.hidden { opacity:.6; border-style:dashed; }
+.community-post header { display:grid; grid-template-columns:auto 1fr auto; gap:.6rem; align-items:center; }
+.community-post header>span,.resolved-badge { width:max-content; padding:.25rem .45rem; border-radius:999px; color:#1e40af; background:#dbeafe; font-size:.72rem; font-weight:750; }
+.community-post header small { color:#64748b; }
+.community-post>p { margin:0; }
+.community-post-actions { display:flex; flex-wrap:wrap; gap:.4rem; }
+.community-post-actions button,.community-replies button { min-height:34px; padding:.35rem .55rem; }
+.community-replies { display:grid; gap:.45rem; padding-left:1rem; border-left:3px solid #bfdbfe; }
+.community-replies article { display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; padding:.55rem; background:#f8fafc; }
+.community-replies p { flex:1 1 100%; margin:0; }
+.community-replies b { color:#166534; }
+.reply-box { display:grid; grid-template-columns:1fr auto; gap:.45rem; }
+.moderation-alert { padding:.7rem; color:#991b1b; background:#fef2f2; border-radius:.5rem; }
+.community-side-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; }
+.community-side-grid form,.official-community-tasks,.common-task-review,.private-question-inbox { display:grid; align-content:start; gap:.65rem; padding:.8rem; border:1px solid #e2e8f0; border-radius:.6rem; background:#f8fafc; }
+.community-side-grid label { display:grid; gap:.3rem; font-weight:700; }
+.official-community-tasks article,.common-task-review article,.private-question-inbox article { display:grid; gap:.5rem; padding:.65rem; border:1px solid #e2e8f0; border-radius:.5rem; background:white; }
+.official-community-tasks span,.common-task-review small { color:#64748b; }
+.common-task-review>div>p { margin:.3rem 0; }
+
+@media (max-width:900px) {
+  .room-cards { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .community-post-form { grid-template-columns:1fr; }
+  .community-post-form textarea { grid-column:auto; }
+}
+
 @media (max-width:900px) {
   .class-load-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
   .tutor-insights,.tutorial-history-grid { grid-template-columns:1fr; }
@@ -1361,7 +1403,11 @@ button:focus-visible {
   }
 
   .week-calendar,
-  .slot-options {
+  .slot-options,
+  .room-cards,
+  .community-side-grid {
     grid-template-columns: 1fr;
   }
+
+  .community-post header,.community-toolbar { display:grid; grid-template-columns:1fr; }
 }

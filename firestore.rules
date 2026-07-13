@@ -186,6 +186,20 @@ service cloud.firestore {
           allow delete: if hasCurrentStudentAccess(classId, studentId);
         }
 
+        match /privateQuestions/{questionId} {
+          allow read: if isTutor(classId)
+            || hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
+            && request.resource.data.classId == classId
+            && request.resource.data.ownerStudentId == studentId
+            && request.resource.data.status == 'open';
+          allow update: if isTutor(classId)
+            && request.resource.data.classId == resource.data.classId
+            && request.resource.data.ownerStudentId == resource.data.ownerStudentId;
+          allow delete: if hasCurrentStudentAccess(classId, studentId)
+            || isTutor(classId);
+        }
+
         match /tutorialGoals/{goalId} {
           allow read: if isTutor(classId)
             || hasCurrentStudentAccess(classId, studentId);
@@ -257,10 +271,13 @@ service cloud.firestore {
               isTutor(classId)
               && request.resource.data.authorRole == 'tutor'
               && request.resource.data.authorTutorId == request.auth.uid
+              && request.resource.data.authorName is string
             ) || (
               hasRoomAccess(classId, roomId)
               && request.resource.data.authorRole == 'student'
               && request.resource.data.authorStudentId == studentAccessData().studentId
+              && request.resource.data.authorName is string
+              && request.resource.data.type != 'notice'
             );
           allow update: if isTutor(classId) || (
             hasRoomAccess(classId, roomId)
@@ -268,12 +285,24 @@ service cloud.firestore {
             && resource.data.authorStudentId == studentAccessData().studentId
             && request.resource.data.authorStudentId == resource.data.authorStudentId
             && request.resource.data.authorRole == resource.data.authorRole
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['body', 'resolved', 'updatedAt'])
           );
           allow delete: if isTutor(classId) || (
             hasRoomAccess(classId, roomId)
             && resource.data.authorRole == 'student'
             && resource.data.authorStudentId == studentAccessData().studentId
           );
+
+          match /usefulMarks/{studentId} {
+            allow read: if isTutor(classId) || hasRoomAccess(classId, roomId);
+            allow create: if hasRoomAccess(classId, roomId)
+              && studentId == studentAccessData().studentId
+              && request.resource.data.studentId == studentId;
+            allow delete: if hasRoomAccess(classId, roomId)
+              && studentId == studentAccessData().studentId;
+            allow update: if false;
+          }
         }
 
         match /reports/{reportId} {
@@ -285,7 +314,18 @@ service cloud.firestore {
 
       match /taskCandidates/{candidateId} {
         allow read: if isTutor(classId);
-        allow write: if false;
+        allow create, update: if isTutor(classId)
+          && request.resource.data.classId == classId
+          && request.resource.data.reviewedByTutorId == request.auth.uid;
+        allow delete: if isTutor(classId);
+      }
+
+      match /officialTasks/{officialTaskId} {
+        allow read: if isTutor(classId) || isClassStudent(classId);
+        allow create, update: if isTutor(classId)
+          && request.resource.data.classId == classId
+          && request.resource.data.confirmedByTutorId == request.auth.uid;
+        allow delete: if isTutor(classId);
       }
 
       match /aggregates/{aggregateId} {

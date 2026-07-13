@@ -91,16 +91,16 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 
 ## 9. Comunitat i recordatoris col·lectius
 
-- [ ] Crear sales amb dubtes, respostes, avisos, recursos i cercador.
-- [ ] Mostrar bombolles de contingut nou i respostes directes.
-- [ ] Permetre resposta útil, resposta validada i pregunta resolta.
-- [ ] Afegir pregunta privada al tutor.
-- [ ] Afegir moderació i denúncia; sense anonimat ni missatges privats entre alumnes.
-- [ ] Detectar possibles deures comuns amb dades agregades.
-- [ ] Utilitzar inicialment el llindar del 50% i un mínim de cinc alumnes.
-- [ ] No mostrar qui l'ha apuntat o oblidat, ni afegir-lo automàticament.
-- [ ] Permetre al tutor confirmar, corregir o descartar una tasca comuna.
-- [ ] Configurar notificacions, resums i hores de silenci.
+- [x] Crear sales amb dubtes, respostes, avisos, recursos i cercador.
+- [x] Mostrar bombolles de contingut nou i respostes directes.
+- [x] Permetre resposta útil, resposta validada i pregunta resolta.
+- [x] Afegir pregunta privada al tutor.
+- [x] Afegir moderació i denúncia; sense anonimat ni missatges privats entre alumnes.
+- [x] Detectar possibles deures comuns amb dades agregades.
+- [x] Utilitzar inicialment el llindar del 50% i un mínim de cinc alumnes.
+- [x] No mostrar qui l'ha apuntat o oblidat, ni afegir-lo automàticament.
+- [x] Permetre al tutor confirmar, corregir o descartar una tasca comuna.
+- [x] Configurar notificacions, resums i hores de silenci.
 
 ## 10. Gamificació i mascota
 

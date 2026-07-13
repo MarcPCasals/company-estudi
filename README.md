@@ -24,6 +24,8 @@ La primera base funcional implementa:
 - ocupacions recurrents privades i planificació que reserva descans i temps lliure;
 - espai tutorial amb excepcions útils, càrrega agregada, fitxa individual, revisions i feedback;
 - suggeriments de sessió sotmesos a acceptació i avisos formatius individuals, de grup o de classe;
+- comunitat per assignatures amb dubtes, respostes, recursos, moderació i preguntes privades al tutor;
+- detecció agregada de possibles deures comuns, sense identitats ni incorporació automàtica;
 
 La interfície actual és deliberadament neutra. El disseny visual definitiu es treballarà després de validar els fluxos funcionals.
 

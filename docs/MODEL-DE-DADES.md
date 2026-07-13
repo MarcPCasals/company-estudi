@@ -8,6 +8,9 @@ Aquest model cobreix el nucli funcional sense decidir encara la interfície visu
 classes/{classId}
   subjects/{subjectId}
   rooms/{subjectId}
+    posts/{postId}
+      usefulMarks/{studentId}
+    reports/{reportId}
   taskCandidates/{candidateId}
   officialTasks/{officialTaskId}
   students/{studentId}
@@ -21,6 +24,7 @@ classes/{classId}
     tutorFeedback/{feedbackId}
     sessionSuggestions/{suggestionId}
     notices/{noticeId}
+    privateQuestions/{questionId}
 
 studentAccess/{firebaseAuthUid}
 tutors/{tutorId}/classSecrets/{classId}
@@ -124,3 +128,5 @@ tutor només podrà veure un resum de disponibilitat, mai el detall.
 - Cada UID tècnic només obté accés si existeix el seu vincle a `studentAccess`.
 - El tutor pot crear suggeriments de sessió, però només l'alumne pot acceptar-los
   i convertir-los en una sessió real del seu calendari.
+- Les coincidències de tasques comunes només desen recompte i llindar; mai la
+  identitat dels alumnes que han originat la coincidència.

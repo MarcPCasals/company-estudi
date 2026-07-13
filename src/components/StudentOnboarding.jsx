@@ -4,6 +4,7 @@ import { loadStudentPlanningSetup, saveStudentPlanningSetup } from '../services/
 import TaskWorkspace from './TaskWorkspace.jsx'
 import CalendarWorkspace from './CalendarWorkspace.jsx'
 import StudentTutorialPanel from './StudentTutorialPanel.jsx'
+import CommunitySpace from './CommunitySpace.jsx'
 
 const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '', type: 'extracurricular' })
 
@@ -137,6 +138,9 @@ export default function StudentOnboarding({ session, onLogout }) {
     </section>
     <section className="panel">
       <StudentTutorialPanel session={session} />
+    </section>
+    <section className="panel">
+      <CommunitySpace classId={session.classId} role="student" actorId={session.studentId} actorName={session.displayName} studentId={session.studentId} />
     </section>
     <section className="panel">
       <TaskWorkspace session={session} />

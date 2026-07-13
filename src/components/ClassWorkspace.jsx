@@ -14,6 +14,7 @@ import {
 } from '../services/studentProvisioningService.js'
 import { WEEK_DAYS } from '../data/defaultSchedule.js'
 import TutorDashboard from './TutorDashboard.jsx'
+import TutorCommunityPanel from './TutorCommunityPanel.jsx'
 
 const messageFromError = (error) =>
   error?.message ?? 'No s’ha pogut completar l’operació.'
@@ -167,6 +168,7 @@ export default function ClassWorkspace({ tutorId, classroom, classes }) {
       </div>
 
       <TutorDashboard tutorId={tutorId} classroom={classroom} students={activeStudents} />
+      <TutorCommunityPanel tutorId={tutorId} classroom={classroom} students={activeStudents} />
 
       <form className="school-schedule-form" onSubmit={saveSchoolSchedule}>
         <h4>Horari escolar de la classe</h4>
