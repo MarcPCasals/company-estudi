@@ -107,11 +107,11 @@ Treballarem **un bloc complet cada vegada** i no avançarem fins que estigui dec
 - [x] Premiar planificar, dividir, començar amb temps, reajustar i demanar ajuda.
 - [x] No premiar crear moltes tasques, acumular minuts, notes o missatges.
 - [x] Sense rànquings, càstigs ni mascota que mori o emmalalteixi.
-- [ ] Definir XP, nivells, missions i constància setmanal flexible.
-- [ ] Definir evolució i personalització de la mascota.
-- [ ] Limitar accions repetides per evitar tasques falses.
-- [ ] Crear missions cooperatives sense assenyalar ningú.
-- [ ] Permetre reduir o desactivar la gamificació.
+- [x] Definir XP, nivells, missions i constància setmanal flexible.
+- [x] Definir evolució i personalització de la mascota.
+- [x] Limitar accions repetides per evitar tasques falses.
+- [x] Crear missions cooperatives sense assenyalar ningú.
+- [x] Permetre reduir o desactivar la gamificació.
 
 ## 11. Validació funcional completa
 

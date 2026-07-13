@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { buildClassExceptions, buildClassLoad, buildStudentInsights, PROGRESS_STAGES, TUTORIAL_COMPETENCIES } from '../domain/tutorialAnalytics.js'
 import { createSessionSuggestion, createTutorFeedback, observeStudentTutorial, observeTutorClassActivity, saveTutorialGoal, sendTutorNotice } from '../services/tutorialService.js'
+import TutorGamificationPanel from './TutorGamificationPanel.jsx'
 
 const localDateTime = () => { const date = new Date(); date.setDate(date.getDate() + 1); date.setHours(17, 30, 0, 0); const offset = date.getTimezoneOffset(); return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16) }
 const shortDate = (value) => new Intl.DateTimeFormat('ca-AD', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(value))
@@ -85,6 +86,7 @@ export default function TutorDashboard({ tutorId, classroom, students }) {
       </div>
       <section className="tutor-student-picker"><h4>Fitxes individuals</h4><div>{activeStudents.map((student) => <button type="button" className={selectedId === student.id ? '' : 'secondary'} key={student.id} onClick={() => setSelectedId(student.id)}>{student.displayName}</button>)}</div></section>
       {selected && <StudentDetail tutorId={tutorId} classId={classroom.id} student={selected} tasks={activity.tasksByStudent[selected.id] ?? []} sessions={activity.sessionsByStudent[selected.id] ?? []} onStatus={report} />}
+      <TutorGamificationPanel tutorId={tutorId} classroom={classroom} studentCount={activeStudents.length} />
 
       <form className="tutor-notice-form" onSubmit={sendNotice}><h4>Avís individual, de grup o de classe</h4><label>Abast<select value={notice.audience} onChange={(event) => setNotice({ ...notice, audience: event.target.value, recipients: [] })}><option value="class">Tota la classe</option><option value="group">Grup seleccionat</option><option value="individual">Un alumne</option></select></label>{notice.audience !== 'class' && <fieldset><legend>Destinataris</legend>{activeStudents.map((student) => <label className="checkbox-label" key={student.id}><input type={notice.audience === 'individual' ? 'radio' : 'checkbox'} name="notice-student" checked={notice.recipients.includes(student.id)} onChange={(event) => setNotice({ ...notice, recipients: notice.audience === 'individual' ? [student.id] : event.target.checked ? [...notice.recipients, student.id] : notice.recipients.filter((id) => id !== student.id) })} />{student.displayName}</label>)}</fieldset>}{Object.entries({ title: 'Títol', observation: 'Què hem observat?', suggestedAction: 'Què proposem?', support: 'Quin suport oferim? (opcional)' }).map(([key, label]) => <label key={key}>{label}<input required={key !== 'support'} value={notice[key]} onChange={(event) => setNotice({ ...notice, [key]: event.target.value })} /></label>)}<button>Envia l’avís</button></form>
       {status.message && <p className={`form-status ${status.state}`} role="status">{status.message}</p>}

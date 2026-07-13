@@ -23,6 +23,8 @@ import {
   transitionTaskStatus,
 } from '../domain/dataModel.js'
 import { db } from '../lib/firebase.js'
+import { GAMIFICATION_ACTION, isEarlyStart } from '../domain/gamification.js'
+import { tryAwardGamificationAction } from './gamificationService.js'
 
 const requireFirestore = () => {
   if (!db) throw new Error('Firestore no està configurat en aquest entorn.')
@@ -122,6 +124,14 @@ export const createStudentTask = async ({ classId, studentId, input }) => {
     updatedAt: serverTimestamp(),
   })
   await batch.commit()
+  if (task.steps.length >= 2) {
+    await tryAwardGamificationAction({
+      classId,
+      studentId,
+      action: GAMIFICATION_ACTION.DIVIDED,
+      sourceId: taskRef.id,
+    })
+  }
   return { id: taskRef.id, ...task }
 }
 
@@ -178,6 +188,14 @@ export const updateStudentTaskProgress = async (task, progressPercent) => {
     currentStatus: task.status,
   })
   await commitTaskChange({ task, ...change })
+  if (Number(task.progressPercent) === 0 && Number(progressPercent) > 0 && isEarlyStart({ deadlineAt: task.deadline?.at })) {
+    await tryAwardGamificationAction({
+      classId: task.classId,
+      studentId: task.ownerStudentId,
+      action: GAMIFICATION_ACTION.EARLY_START,
+      sourceId: task.id,
+    })
+  }
 }
 
 export const updateStudentTaskDelivery = async (task, toDeliveryStatus) => {
@@ -249,6 +267,12 @@ export const planStudentTask = async (task, plan) => {
   })
   batch.set(historyReference(task.classId, task.ownerStudentId, task.id), historyEvent)
   await batch.commit()
+  await tryAwardGamificationAction({
+    classId: task.classId,
+    studentId: task.ownerStudentId,
+    action: isReschedule ? GAMIFICATION_ACTION.READJUSTED : GAMIFICATION_ACTION.PLANNED,
+    sourceId: task.id,
+  })
 }
 
 export const updateStudentTaskDeadline = async (task, deadlineInput, reason = '') => {
@@ -280,6 +304,14 @@ export const setStudentTaskHelpRequested = async (task, helpRequested) => {
     reason: helpRequested ? 'L’alumne demana ajuda.' : 'L’alumne retira la petició d’ajuda.',
   })
   await commitTaskChange({ task, taskChanges: { helpRequested }, historyEvent })
+  if (helpRequested) {
+    await tryAwardGamificationAction({
+      classId: task.classId,
+      studentId: task.ownerStudentId,
+      action: GAMIFICATION_ACTION.HELP_REQUESTED,
+      sourceId: task.id,
+    })
+  }
 }
 
 export const loadPrivateTaskDetails = async (task) => {

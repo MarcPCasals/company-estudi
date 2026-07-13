@@ -5,6 +5,7 @@ import TaskWorkspace from './TaskWorkspace.jsx'
 import CalendarWorkspace from './CalendarWorkspace.jsx'
 import StudentTutorialPanel from './StudentTutorialPanel.jsx'
 import CommunitySpace from './CommunitySpace.jsx'
+import StudentGamificationPanel from './StudentGamificationPanel.jsx'
 
 const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '', type: 'extracurricular' })
 
@@ -135,6 +136,9 @@ export default function StudentOnboarding({ session, onLogout }) {
     </section>
     <section className="panel">
       <CalendarWorkspace session={session} />
+    </section>
+    <section className="panel">
+      <StudentGamificationPanel session={session} />
     </section>
     <section className="panel">
       <StudentTutorialPanel session={session} />

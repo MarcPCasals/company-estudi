@@ -3,6 +3,8 @@ import { buildSupportiveNotice, normalizeTutorialGoal, normalizeTutorFeedback, n
 import { localDateKey } from '../domain/calendarPlanning.js'
 import { db } from '../lib/firebase.js'
 import { planStudentTask } from './taskService.js'
+import { GAMIFICATION_ACTION, getWeekKey } from '../domain/gamification.js'
+import { tryAwardGamificationAction } from './gamificationService.js'
 
 const requireDb = () => { if (!db) throw new Error('Firestore no està configurat.'); return db }
 const studentPath = (classId, studentId) => ['classes', classId, 'students', studentId]
@@ -42,6 +44,12 @@ export const submitWeeklyReview = async ({ classId, studentId, input }) => {
   await setDoc(doc(requireDb(), ...studentPath(classId, studentId), 'tutorialSubmissions', reviewId), {
     classId, ownerStudentId: studentId, ...normalizeWeeklyReview(input), submittedAt: serverTimestamp(), updatedAt: serverTimestamp(),
   }, { merge: true })
+  await tryAwardGamificationAction({
+    classId,
+    studentId,
+    action: GAMIFICATION_ACTION.WEEKLY_REVIEW,
+    sourceId: getWeekKey(),
+  })
 }
 
 export const createTutorFeedback = async ({ tutorId, classId, studentId, input }) => setDoc(doc(collection(requireDb(), ...studentPath(classId, studentId), 'tutorFeedback')), {

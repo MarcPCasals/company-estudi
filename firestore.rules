@@ -102,6 +102,15 @@ service cloud.firestore {
       ]);
     }
 
+    function hasValidGamificationActionAndXp() {
+      return (request.resource.data.action == 'planned' && request.resource.data.xp == 10)
+        || (request.resource.data.action == 'divided' && request.resource.data.xp == 10)
+        || (request.resource.data.action == 'early_start' && request.resource.data.xp == 12)
+        || (request.resource.data.action == 'readjusted' && request.resource.data.xp == 8)
+        || (request.resource.data.action == 'help_requested' && request.resource.data.xp == 8)
+        || (request.resource.data.action == 'weekly_review' && request.resource.data.xp == 12);
+    }
+
     match /classes/{classId} {
       allow create: if signedInWithGoogle()
         && request.resource.data.tutorId == request.auth.uid;
@@ -252,6 +261,51 @@ service cloud.firestore {
           allow delete: if isTutor(classId)
             && resource.data.authorTutorId == request.auth.uid;
         }
+
+        match /gamificationEvents/{eventId} {
+          allow read: if hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
+            && request.resource.data.keys().hasOnly([
+              'classId', 'ownerStudentId', 'action', 'sourceId',
+              'weekKey', 'xp', 'createdAt'
+            ])
+            && request.resource.data.classId == classId
+            && request.resource.data.ownerStudentId == studentId
+            && request.resource.data.sourceId is string
+            && request.resource.data.weekKey is string
+            && hasValidGamificationActionAndXp();
+          allow update, delete: if false;
+        }
+
+        match /gamification/{preferenceId} {
+          allow read: if hasCurrentStudentAccess(classId, studentId);
+          allow create, update: if hasCurrentStudentAccess(classId, studentId)
+            && preferenceId == 'preferences'
+            && request.resource.data.keys().hasOnly([
+              'mode', 'animationsEnabled', 'accessory', 'updatedAt'
+            ])
+            && request.resource.data.mode in ['full', 'reduced', 'off']
+            && request.resource.data.animationsEnabled is bool
+            && request.resource.data.accessory is string;
+          allow delete: if hasCurrentStudentAccess(classId, studentId);
+        }
+
+        match /missionContributions/{missionId} {
+          allow read: if hasCurrentStudentAccess(classId, studentId);
+          allow create: if hasCurrentStudentAccess(classId, studentId)
+            && request.resource.data.keys().hasOnly([
+              'classId', 'ownerStudentId', 'missionId', 'weekKey', 'contributedAt'
+            ])
+            && request.resource.data.classId == classId
+            && request.resource.data.ownerStudentId == studentId
+            && request.resource.data.missionId == missionId
+            && getAfter(
+              /databases/$(database)/documents/classes/$(classId)/cooperativeMissions/$(missionId)
+            ).data.progress == get(
+              /databases/$(database)/documents/classes/$(classId)/cooperativeMissions/$(missionId)
+            ).data.progress + 1;
+          allow update, delete: if false;
+        }
       }
 
       match /subjects/{subjectId} {
@@ -331,6 +385,39 @@ service cloud.firestore {
       match /aggregates/{aggregateId} {
         allow read: if isTutor(classId);
         allow write: if false;
+      }
+
+      match /cooperativeMissions/{missionId} {
+        allow read: if isTutor(classId) || isClassStudent(classId);
+        allow create: if isTutor(classId)
+          && request.resource.data.keys().hasOnly([
+            'classId', 'title', 'description', 'action', 'target', 'progress',
+            'weekKey', 'status', 'createdByTutorId', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.classId == classId
+          && request.resource.data.createdByTutorId == request.auth.uid
+          && request.resource.data.progress == 0
+          && request.resource.data.status == 'active';
+        allow update: if isTutor(classId) || (
+          isClassStudent(classId)
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['progress', 'status', 'updatedAt'])
+          && request.resource.data.progress == resource.data.progress + 1
+          && request.resource.data.progress <= resource.data.target
+          && (
+            (request.resource.data.progress < resource.data.target
+              && request.resource.data.status == 'active')
+            || (request.resource.data.progress == resource.data.target
+              && request.resource.data.status == 'completed')
+          )
+          && !exists(
+            /databases/$(database)/documents/classes/$(classId)/students/$(studentAccessData().studentId)/missionContributions/$(missionId)
+          )
+          && getAfter(
+            /databases/$(database)/documents/classes/$(classId)/students/$(studentAccessData().studentId)/missionContributions/$(missionId)
+          ).data.ownerStudentId == studentAccessData().studentId
+        );
+        allow delete: if isTutor(classId);
       }
     }
 
