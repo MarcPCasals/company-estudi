@@ -34,7 +34,12 @@ import {
   synchronizePendingWrites,
 } from './services/offlineService.js'
 import ClassWorkspace from './components/ClassWorkspace.jsx'
+import { CotutorInvitationInbox } from './components/CotutoringPanel.jsx'
 import StudentOnboarding from './components/StudentOnboarding.jsx'
+import {
+  observeMyCotutorInvitations,
+  respondToCotutorInvitation,
+} from './services/cotutoringService.js'
 
 const formatDeadline = (value) =>
   new Intl.DateTimeFormat('ca-AD', {
@@ -270,7 +275,14 @@ const classCreationErrorMessage = (error) => {
   return error?.message ?? 'No hem pogut crear la classe. Torna-ho a provar.'
 }
 
-function ClassManager({ tutorId }) {
+const timestampMillis = (value) => {
+  if (!value) return 0
+  if (typeof value.toMillis === 'function') return value.toMillis()
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+}
+
+function ClassManager({ tutorId, user, onLogout }) {
   const [classes, setClasses] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -278,6 +290,8 @@ function ClassManager({ tutorId }) {
   const [status, setStatus] = useState({ state: 'idle', message: '' })
   const [createdClass, setCreatedClass] = useState(null)
   const [syncState, setSyncState] = useState(SYNC_STATE.CACHED)
+  const [invitations, setInvitations] = useState([])
+  const [invitationBusy, setInvitationBusy] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState('')
 
   useEffect(() => observeTutorClasses(
@@ -289,6 +303,24 @@ function ClassManager({ tutorId }) {
     () => setStatus({ state: 'error', message: 'No hem pogut carregar les classes.' }),
   ), [tutorId])
 
+  useEffect(() => observeMyCotutorInvitations({
+    email: user?.email,
+    onInvitations: setInvitations,
+    onError: () => setStatus({ state: 'error', message: 'No hem pogut carregar les invitacions de cotutoria.' }),
+  }), [user?.email])
+
+  const respondToInvitation = async (invitation, accept) => {
+    setInvitationBusy(true)
+    try {
+      await respondToCotutorInvitation({ invitation, accept })
+      setStatus({ state: 'success', message: accept ? 'Cotutoria acceptada.' : 'Invitació rebutjada.' })
+    } catch (error) {
+      setStatus({ state: 'error', message: error?.message ?? 'No hem pogut respondre la invitació.' })
+    } finally {
+      setInvitationBusy(false)
+    }
+  }
+
   const submit = async (event) => {
     event.preventDefault()
     setStatus({ state: 'loading', message: 'Creant la classe i les sales…' })
@@ -298,24 +330,32 @@ function ClassManager({ tutorId }) {
       setName('')
       setCourse('')
       setShowForm(false)
-      setSelectedClassId(result.classId)
       setStatus({ state: 'success', message: 'Classe creada correctament.' })
     } catch (error) {
       setStatus({ state: 'error', message: classCreationErrorMessage(error) })
     }
   }
 
+  const availableClasses = [...classes]
+    .filter((item) => item.active !== false)
+    .sort((left, right) => timestampMillis(right.updatedAt ?? right.createdAt) - timestampMillis(left.updatedAt ?? left.createdAt))
+  const classroom = availableClasses.find(({ id }) => id === selectedClassId) ?? availableClasses[0]
+
+  if (classroom) {
+    return <ClassWorkspace tutorId={tutorId} classroom={classroom} classes={classes} user={user} onLogout={onLogout} invitations={invitations} onRespondInvitation={respondToInvitation} invitationBusy={invitationBusy} onSelectClass={setSelectedClassId} />
+  }
+
   return (
     <div className="class-manager">
+      <CotutorInvitationInbox invitations={invitations} onRespond={respondToInvitation} busy={invitationBusy} />
       <div className="class-manager-heading">
         <div>
-          <h3>Les meves classes</h3>
-          <p className="helper-text">
-            {classes.length === 0 ? 'Encara no has creat cap classe.' : `${classes.length} classes creades.`}
-          </p>
+          <p className="eyebrow">Primer pas</p>
+          <h3>Prepara el teu grup de tutoria</h3>
+          <p className="helper-text">Només ho hauràs de fer una vegada.</p>
         </div>
         <button type="button" onClick={() => setShowForm((current) => !current)}>
-          {showForm ? 'Cancel·la' : 'Crea una classe'}
+          {showForm ? 'Cancel·la' : 'Configura el grup'}
         </button>
       </div>
       <p className={`class-sync-state ${syncState}`}>{SYNC_LABELS[syncState]}</p>
@@ -359,30 +399,6 @@ function ClassManager({ tutorId }) {
           <span>Codi de classe: <code>{createdClass.classCode}</code></span>
           <p>Guarda aquest codi. El següent pas serà afegir els alumnes.</p>
         </div>
-      )}
-
-      {classes.length > 0 && (
-        <ul className="class-list">
-          {classes.map((classroom) => (
-            <li key={classroom.id} className={selectedClassId === classroom.id ? 'selected' : ''}>
-              <div>
-                <strong>{classroom.name}</strong>
-                <span>{classroom.course}</span>
-              </div>
-              <button type="button" className="secondary" onClick={() => setSelectedClassId(classroom.id)}>
-                Gestiona
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {classes.find((classroom) => classroom.id === selectedClassId) && (
-        <ClassWorkspace
-          tutorId={tutorId}
-          classroom={classes.find((classroom) => classroom.id === selectedClassId)}
-          classes={classes}
-        />
       )}
 
       {status.message && (
@@ -437,6 +453,10 @@ function TutorLoginPanel({ onUserChange = () => {} }) {
     }
   }
 
+  if (user) {
+    return <ClassManager tutorId={user.uid} user={user} onLogout={logout} />
+  }
+
   return (
     <section className="panel tutor-login" aria-labelledby="tutor-login-title">
       <div className="panel-heading">
@@ -444,7 +464,6 @@ function TutorLoginPanel({ onUserChange = () => {} }) {
           <p className="eyebrow">Espai del tutor</p>
           <h2 id="tutor-login-title">Accés del professorat</h2>
         </div>
-        {user && <span className="status-badge ok">Sessió iniciada</span>}
       </div>
 
       {!authReady && <p className="helper-text">Comprovant la sessió…</p>}
@@ -466,20 +485,6 @@ function TutorLoginPanel({ onUserChange = () => {} }) {
               Entra com a tutor de validació
             </button>
           )}
-        </>
-      )}
-
-      {user && (
-        <>
-          <div className="signed-in-user">
-            {user.photoURL && <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />}
-            <div>
-              <strong>{user.displayName ?? 'Tutor'}</strong>
-              <span>{user.email}</span>
-            </div>
-            <button type="button" className="secondary" onClick={logout}>Tanca la sessió</button>
-          </div>
-          <ClassManager tutorId={user.uid} />
         </>
       )}
 
@@ -619,13 +624,7 @@ export default function App() {
   if (tutorUser) {
     return (
       <main className="tutor-visual-shell">
-        <header className="tutor-visual-topbar">
-          <strong>Company d’estudi</strong>
-          <span>Espai del tutor</span>
-        </header>
-        <div className="tutor-visual-content">
-          <TutorLoginPanel onUserChange={setTutorUser} />
-        </div>
+        <TutorLoginPanel onUserChange={setTutorUser} />
       </main>
     )
   }

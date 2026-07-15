@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { buildClassExceptions, buildClassLoad, buildStudentInsights, PROGRESS_STAGES, TUTORIAL_COMPETENCIES } from '../domain/tutorialAnalytics.js'
 import { createSessionSuggestion, createTutorFeedback, observeStudentTutorial, observeTutorClassActivity, saveTutorialGoal, sendTutorNotice } from '../services/tutorialService.js'
 import TutorGamificationPanel from './TutorGamificationPanel.jsx'
+import TutorStudentPreview from './TutorStudentPreview.jsx'
+import { getStudyRoomEvolution } from '../domain/studyRoom.js'
+import { observeAndRefreshStudyRoomRanking } from '../services/studyRoomService.js'
+import './tutorStudyProgress.css'
 
 const localDateTime = () => { const date = new Date(); date.setDate(date.getDate() + 1); date.setHours(17, 30, 0, 0); const offset = date.getTimezoneOffset(); return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16) }
 const shortDate = (value) => new Intl.DateTimeFormat('ca-AD', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(value))
 
-function StudentDetail({ tutorId, classId, student, tasks, sessions, onStatus }) {
+function StudentDetail({ tutorId, classId, student, tasks, sessions, studyProgress, onStatus }) {
+  const [activePanel, setActivePanel] = useState('student')
   const [data, setData] = useState({ goal: null, reviews: [], feedback: [], suggestions: [], notices: [], availability: null })
   const [goal, setGoal] = useState({ competency: TUTORIAL_COMPETENCIES[0], progressStage: PROGRESS_STAGES[0].id, description: '' })
   const [feedback, setFeedback] = useState({ observation: '', question: '', strategy: '', agreement: '' })
@@ -17,7 +22,13 @@ function StudentDetail({ tutorId, classId, student, tasks, sessions, onStatus })
   const submit = async (event, action, success) => { event.preventDefault(); onStatus('loading', 'Desant…'); try { await action(); onStatus('success', success) } catch (error) { onStatus('error', error.message) } }
   return (
     <section className="tutor-student-detail">
-      <div className="tutor-detail-heading"><div><p className="eyebrow">Fitxa individual</p><h4>{student.displayName}</h4></div><span>{tasks.filter((task) => task.status !== 'done').length} tasques obertes</span></div>
+      <div className="tutor-detail-heading"><div><p className="eyebrow">Alumne seleccionat</p><h4>{student.displayName}</h4></div><span>{tasks.filter((task) => task.status !== 'done').length} tasques obertes</span></div>
+      <div className="actions">
+        <button type="button" className={activePanel === 'student' ? '' : 'secondary'} aria-pressed={activePanel === 'student'} onClick={() => setActivePanel('student')}>Vista de l’alumne</button>
+        <button type="button" className={activePanel === 'tutorial' ? '' : 'secondary'} aria-pressed={activePanel === 'tutorial'} onClick={() => setActivePanel('tutorial')}>Fitxa tutorial</button>
+      </div>
+      {activePanel === 'student' && <TutorStudentPreview student={student} tasks={tasks} sessions={sessions} tutorialData={data} studyProgress={studyProgress} />}
+      {activePanel === 'tutorial' && <>
       <div className="tutor-insights">
         {insights.map((item) => <article key={item.id}><strong>{item.label}</strong><p>{item.interpretation}</p><small>{item.evidence}</small></article>)}
       </div>
@@ -53,20 +64,25 @@ function StudentDetail({ tutorId, classId, student, tasks, sessions, onStatus })
         <section><h5>Feedback enviat</h5>{!data.feedback.length && <p>Encara no n’hi ha.</p>}{data.feedback.map((item) => <article key={item.id}><strong>{item.observation}</strong><p>{item.strategy}</p><small>Acord: {item.agreement}</small></article>)}</section>
         <section><h5>Disponibilitat resumida</h5><p>{data.availability ? Object.entries(data.availability.availableAfterByDay ?? {}).map(([day, time]) => `${day}: ${time}`).join(' · ') : 'Encara no configurada.'}</p><small>Sense noms d’extraescolars ni detalls personals.</small></section>
       </div>
+      </>}
     </section>
   )
 }
 
 export default function TutorDashboard({ tutorId, classroom, students }) {
-  const [activity, setActivity] = useState({ tasksByStudent: {}, sessionsByStudent: {} })
+  const [activity, setActivity] = useState({ tasksByStudent: {}, sessionsByStudent: {}, studyProgressByStudent: {} })
   const [selectedId, setSelectedId] = useState('')
   const [status, setStatus] = useState({ state: 'idle', message: '' })
   const [notice, setNotice] = useState({ audience: 'class', recipients: [], title: '', observation: '', suggestedAction: '', support: '' })
   const activeStudents = useMemo(() => students.filter((student) => student.active !== false), [students])
   useEffect(() => {
-    setActivity({ tasksByStudent: {}, sessionsByStudent: {} })
+    setActivity({ tasksByStudent: {}, sessionsByStudent: {}, studyProgressByStudent: {} })
     return observeTutorClassActivity({ classId: classroom.id, students: activeStudents }, setActivity, (error) => setStatus({ state: 'error', message: error.message }))
   }, [classroom.id, activeStudents.map((item) => item.id).join('|')])
+  useEffect(() => observeAndRefreshStudyRoomRanking(
+    { classId: classroom.id },
+    (error) => setStatus({ state: 'error', message: error?.message ?? 'No hem pogut recalcular el podi.' }),
+  ), [classroom.id])
   const exceptions = buildClassExceptions({ students: activeStudents, tasksByStudent: activity.tasksByStudent })
   const load = buildClassLoad({ tasksByStudent: activity.tasksByStudent, sessionsByStudent: activity.sessionsByStudent })
   const selected = activeStudents.find((student) => student.id === selectedId)
@@ -84,8 +100,9 @@ export default function TutorDashboard({ tutorId, classroom, students }) {
         <section><h4>Excepcions útils</h4>{!exceptions.length && <p>Cap excepció destacada ara mateix.</p>}{exceptions.map((item, index) => <button type="button" className="tutor-exception" key={`${item.studentId}-${item.type}-${index}`} onClick={() => setSelectedId(item.studentId)}><strong>{item.studentName}</strong><span>{item.label}</span></button>)}</section>
         <section><h4>Càrrega agregada · 7 dies</h4><div className="class-load-grid">{load.map((day) => <article key={day.dateKey}><strong>{shortDate(`${day.dateKey}T12:00:00`)}</strong><span>{day.deadlines} terminis</span><span>{day.sessions} sessions</span></article>)}</div></section>
       </div>
+      <section className="tutor-study-progress"><div className="tutor-study-progress-heading"><div><p className="eyebrow">Sala d’estudi</p><h4>Evolució de Piu</h4></div><span>XP i nivell de cada alumne</span></div><div className="tutor-study-progress-grid">{activeStudents.map((student) => { const progress = activity.studyProgressByStudent?.[student.id] ?? { totalXp: 0 }; const evolution = getStudyRoomEvolution(progress.totalXp); return <button type="button" key={student.id} onClick={() => setSelectedId(student.id)}><img src={`${import.meta.env.BASE_URL}mascota/piu/evolucions/${evolution.file}`} alt="" /><span><strong>{student.displayName}</strong><small>Nivell {evolution.level} · {evolution.name}</small><b>{progress.totalXp ?? 0} XP</b></span></button> })}</div></section>
       <section className="tutor-student-picker"><h4>Fitxes individuals</h4><div>{activeStudents.map((student) => <button type="button" className={selectedId === student.id ? '' : 'secondary'} key={student.id} onClick={() => setSelectedId(student.id)}>{student.displayName}</button>)}</div></section>
-      {selected && <StudentDetail tutorId={tutorId} classId={classroom.id} student={selected} tasks={activity.tasksByStudent[selected.id] ?? []} sessions={activity.sessionsByStudent[selected.id] ?? []} onStatus={report} />}
+      {selected && <StudentDetail key={selected.id} tutorId={tutorId} classId={classroom.id} student={selected} tasks={activity.tasksByStudent[selected.id] ?? []} sessions={activity.sessionsByStudent[selected.id] ?? []} studyProgress={activity.studyProgressByStudent?.[selected.id] ?? { totalXp: 0 }} onStatus={report} />}
       <TutorGamificationPanel tutorId={tutorId} classroom={classroom} studentCount={activeStudents.length} />
 
       <form className="tutor-notice-form" onSubmit={sendNotice}><h4>Avís individual, de grup o de classe</h4><label>Abast<select value={notice.audience} onChange={(event) => setNotice({ ...notice, audience: event.target.value, recipients: [] })}><option value="class">Tota la classe</option><option value="group">Grup seleccionat</option><option value="individual">Un alumne</option></select></label>{notice.audience !== 'class' && <fieldset><legend>Destinataris</legend>{activeStudents.map((student) => <label className="checkbox-label" key={student.id}><input type={notice.audience === 'individual' ? 'radio' : 'checkbox'} name="notice-student" checked={notice.recipients.includes(student.id)} onChange={(event) => setNotice({ ...notice, recipients: notice.audience === 'individual' ? [student.id] : event.target.checked ? [...notice.recipients, student.id] : notice.recipients.filter((id) => id !== student.id) })} />{student.displayName}</label>)}</fieldset>}{Object.entries({ title: 'Títol', observation: 'Què hem observat?', suggestedAction: 'Què proposem?', support: 'Quin suport oferim? (opcional)' }).map(([key, label]) => <label key={key}>{label}<input required={key !== 'support'} value={notice[key]} onChange={(event) => setNotice({ ...notice, [key]: event.target.value })} /></label>)}<button>Envia l’avís</button></form>

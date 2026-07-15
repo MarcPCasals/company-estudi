@@ -51,8 +51,91 @@ export const resolveCommonCandidate = async ({ tutorId, classId, candidate, acti
 
 export const observeCandidateDecisions = ({ classId }, onData) => onSnapshot(collection(requireDb(), 'classes', classId, 'taskCandidates'), (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))))
 
+export const observeClassTaskAlerts = ({ classId }, onData, onError) => onSnapshot(
+  collection(requireDb(), 'classes', classId, 'taskAlerts'),
+  (snapshot) => onData(snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))),
+  onError,
+)
+
+export const publishContradictionAlert = ({ tutorId, classId, alarm }) => setDoc(
+  doc(requireDb(), 'classes', classId, 'taskAlerts', encodeURIComponent(alarm.id)),
+  {
+    classId,
+    type: 'contradiction',
+    topicKey: alarm.topicKey,
+    subjectId: alarm.subjectId,
+    title: alarm.title,
+    count: alarm.count,
+    variants: alarm.variants.map((variant) => ({ key: variant.key, count: variant.count, deadline: variant.deadline ?? null })),
+    status: 'active',
+    publishedByTutorId: tutorId,
+    updatedAt: serverTimestamp(),
+  },
+  { merge: true },
+)
+
+export const resolveTaskAlert = ({ tutorId, classId, alertId }) => updateDoc(
+  doc(requireDb(), 'classes', classId, 'taskAlerts', alertId),
+  { status: 'resolved', resolvedByTutorId: tutorId, resolvedAt: serverTimestamp(), updatedAt: serverTimestamp() },
+)
+
 export const saveCommunitySettings = ({ classId, studentId, input }) => setDoc(doc(requireDb(), 'classes', classId, 'students', studentId, 'private', 'communitySettings'), { ...normalizeNotificationSettings(input), updatedAt: serverTimestamp() }, { merge: true })
 export const loadCommunitySettings = async ({ classId, studentId }) => { const snapshot = await getDoc(doc(requireDb(), 'classes', classId, 'students', studentId, 'private', 'communitySettings')); return snapshot.exists() ? snapshot.data() : null }
 
 export const markRoomRead = ({ classId, studentId, roomId }) => setDoc(doc(requireDb(), 'classes', classId, 'students', studentId, 'private', `roomRead-${roomId}`), { roomId, lastReadAt: serverTimestamp() }, { merge: true })
 export const loadRoomRead = async ({ classId, studentId, roomId }) => { const snapshot = await getDoc(doc(requireDb(), 'classes', classId, 'students', studentId, 'private', `roomRead-${roomId}`)); return snapshot.data()?.lastReadAt?.toMillis?.() ?? 0 }
+
+const timestampMillis = (value) => value?.toMillis?.() ?? ((value?.seconds ?? 0) * 1000)
+
+export const countUnreadRoomPosts = ({ posts = [], lastReadAt = 0, studentId }) => posts.filter((post) => (
+  !post.hidden
+  && post.authorStudentId !== studentId
+  && timestampMillis(post.createdAt) > lastReadAt
+)).length
+
+export const observeCommunityUnreadCount = ({ classId, studentId }, onData, onError) => {
+  const roomState = new Map()
+  const roomStops = new Map()
+  const emit = () => onData([...roomState.values()].reduce((total, room) => total + countUnreadRoomPosts({
+    posts: room.posts,
+    lastReadAt: room.lastReadAt,
+    studentId,
+  }), 0))
+
+  const stopRooms = observeAccessibleRooms({ classId }, (rooms) => {
+    const accessibleIds = new Set(rooms.map((room) => room.id))
+
+    roomStops.forEach((stop, roomId) => {
+      if (!accessibleIds.has(roomId)) {
+        stop()
+        roomStops.delete(roomId)
+        roomState.delete(roomId)
+      }
+    })
+
+    rooms.forEach((room) => {
+      if (roomStops.has(room.id)) return
+      roomState.set(room.id, { posts: [], lastReadAt: 0 })
+      const readRef = doc(requireDb(), 'classes', classId, 'students', studentId, 'private', `roomRead-${room.id}`)
+      const stopRead = onSnapshot(readRef, (snapshot) => {
+        const current = roomState.get(room.id)
+        if (!current) return
+        current.lastReadAt = timestampMillis(snapshot.data()?.lastReadAt)
+        emit()
+      }, onError)
+      const stopPosts = observeRoomPosts({ classId, roomId: room.id }, (posts) => {
+        const current = roomState.get(room.id)
+        if (!current) return
+        current.posts = posts
+        emit()
+      }, onError)
+      roomStops.set(room.id, () => { stopRead(); stopPosts() })
+    })
+    emit()
+  })
+
+  return () => {
+    stopRooms()
+    roomStops.forEach((stop) => stop())
+  }
+}

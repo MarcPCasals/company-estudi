@@ -14,6 +14,7 @@ import {
 import { createStudentCode } from '../domain/accessCodes.js'
 import { deriveStudentCredentials } from '../domain/technicalCredentials.js'
 import { db, getStudentProvisioningAuth } from '../lib/firebase.js'
+import { observeWithPermissionRetry } from './firestoreObserver.js'
 
 const cleanStudentName = (value) => {
   const name = String(value ?? '').trim().replace(/\s+/g, ' ')
@@ -111,6 +112,12 @@ export const provisionStudentTechnicalAccount = async ({
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
+      batch.set(doc(db, 'classes', classId, 'studyRoomLeaderboard', studentRef.id), {
+        studentId: studentRef.id,
+        displayName: cleanName,
+        totalXp: 0,
+        updatedAt: serverTimestamp(),
+      })
       batch.set(doc(db, 'studentAccess', account.user.uid), {
         active: true,
         classId,
@@ -165,14 +172,16 @@ export const provisionStudents = async ({ tutorId, classId, names }) => {
   return students
 }
 
-export const observeStudentCredentials = ({ tutorId, classId }, onData, onError) =>
-  onSnapshot(
+export const observeStudentCredentials = ({ tutorId, classId }, onData, onError) => observeWithPermissionRetry({
+  subscribe: (handleError) => onSnapshot(
     collection(db, 'tutors', tutorId, 'classSecrets', classId, 'students'),
     (snapshot) => onData(snapshot.docs
       .map((document) => ({ id: document.id, ...document.data() }))
       .sort((left, right) => left.displayName.localeCompare(right.displayName, 'ca'))),
-    onError,
-  )
+    handleError,
+  ),
+  onError,
+})
 
 export const regenerateStudentCredential = async ({
   tutorId,
@@ -295,6 +304,7 @@ export const moveStudentToClass = async ({
         movedToClassId: targetClassId,
         updatedAt: serverTimestamp(),
       })
+      batch.delete(doc(db, 'classes', sourceClassId, 'studyRoomLeaderboard', studentId))
       batch.set(targetStudentRef, {
         displayName: student.displayName,
         active: true,
@@ -302,6 +312,12 @@ export const moveStudentToClass = async ({
         credentialVersion,
         movedFromClassId: sourceClassId,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      batch.set(doc(db, 'classes', targetClassId, 'studyRoomLeaderboard', studentId), {
+        studentId,
+        displayName: student.displayName,
+        totalXp: 0,
         updatedAt: serverTimestamp(),
       })
       batch.set(doc(db, 'studentAccess', account.user.uid), {

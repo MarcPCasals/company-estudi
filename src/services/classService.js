@@ -14,6 +14,7 @@ import { DEFAULT_SUBJECTS } from '../data/subjects.js'
 import { DEFAULT_SCHOOL_SCHEDULE } from '../data/defaultSchedule.js'
 import { resolveSyncState } from '../domain/offlinePolicy.js'
 import { auth, db } from '../lib/firebase.js'
+import { observeWithPermissionRetry } from './firestoreObserver.js'
 
 const requireFirebaseService = (service, label) => {
   if (!service) throw new Error(`${label} no està configurat en aquest entorn.`)
@@ -41,6 +42,8 @@ export const createTutorClass = async ({ name, course }) => {
   const creationBatch = writeBatch(firestore)
   creationBatch.set(classRef, {
     tutorId: tutor.uid,
+    teacherIds: [tutor.uid],
+    ownerDisplayName: tutor.displayName ?? tutor.email ?? 'Tutor responsable',
     name: cleanName,
     course: cleanCourse,
     active: true,
@@ -54,6 +57,12 @@ export const createTutorClass = async ({ name, course }) => {
     classCode,
     credentialVersion: 1,
     createdAt: serverTimestamp(),
+  })
+  creationBatch.set(doc(firestore, 'classes', classRef.id, 'teacherMembers', tutor.uid), {
+    uid: tutor.uid,
+    role: 'owner',
+    status: 'accepted',
+    joinedAt: serverTimestamp(),
   })
   for (const subject of DEFAULT_SUBJECTS) {
     creationBatch.set(doc(firestore, 'classes', classRef.id, 'subjects', subject.id), {
@@ -94,15 +103,19 @@ export const getTutorClassSecret = async ({ tutorId, classId }) => {
   return snapshot.exists() ? snapshot.data() : null
 }
 
-const observeSortedCollection = ({ path, sortField, onData, onError }) =>
-  onSnapshot(
-    collection(requireFirebaseService(db, 'Firestore'), ...path),
-    { includeMetadataChanges: true },
-    (snapshot) => onData(snapshot.docs
-      .map((document) => ({ id: document.id, ...document.data() }))
-      .sort((left, right) => String(left[sortField]).localeCompare(String(right[sortField]), 'ca'))),
+const observeSortedCollection = ({ path, sortField, onData, onError }) => {
+  return observeWithPermissionRetry({
+    subscribe: (handleError) => onSnapshot(
+      collection(requireFirebaseService(db, 'Firestore'), ...path),
+      { includeMetadataChanges: true },
+      (snapshot) => onData(snapshot.docs
+        .map((document) => ({ id: document.id, ...document.data() }))
+        .sort((left, right) => String(left[sortField]).localeCompare(String(right[sortField]), 'ca'))),
+      handleError,
+    ),
     onError,
-  )
+  })
+}
 
 export const observeClassStudents = (classId, onStudents, onError) =>
   observeSortedCollection({
@@ -167,27 +180,43 @@ export const updateClassSchoolSchedule = async ({ classId, schoolSchedule }) => 
 }
 
 export const observeTutorClasses = (tutorId, onClasses, onError) => {
-  const classesQuery = query(
-    collection(requireFirebaseService(db, 'Firestore'), 'classes'),
-    where('tutorId', '==', tutorId),
-  )
-
-  return onSnapshot(classesQuery, { includeMetadataChanges: true }, (snapshot) => {
-    const classes = snapshot.docs
-      .map((document) => ({ id: document.id, ...document.data() }))
+  const classesCollection = collection(requireFirebaseService(db, 'Firestore'), 'classes')
+  const snapshots = new Map()
+  const publish = () => {
+    const documents = [...snapshots.values()].flatMap((snapshot) => snapshot.docs)
+    const classes = [...new Map(documents.map((document) => [
+      document.id,
+      { id: document.id, ...document.data() },
+    ])).values()]
       .sort((left, right) => left.name.localeCompare(right.name, 'ca'))
+    const metadata = [...snapshots.values()]
     onClasses(classes, {
       state: resolveSyncState({
         online: globalThis.navigator?.onLine ?? true,
-        fromCache: snapshot.metadata.fromCache,
-        hasPendingWrites: snapshot.docs.some(
+        fromCache: metadata.some((snapshot) => snapshot.metadata.fromCache),
+        hasPendingWrites: metadata.some((snapshot) => snapshot.docs.some(
           (document) => document.metadata.hasPendingWrites,
-        ),
+        )),
       }),
-      fromCache: snapshot.metadata.fromCache,
-      hasPendingWrites: snapshot.docs.some(
+      fromCache: metadata.some((snapshot) => snapshot.metadata.fromCache),
+      hasPendingWrites: metadata.some((snapshot) => snapshot.docs.some(
         (document) => document.metadata.hasPendingWrites,
-      ),
+      )),
     })
-  }, onError)
+  }
+  const subscribe = (key, classesQuery) => onSnapshot(
+    classesQuery,
+    { includeMetadataChanges: true },
+    (snapshot) => {
+      snapshots.set(key, snapshot)
+      publish()
+    },
+    onError,
+  )
+  const stopOwned = subscribe('owned', query(classesCollection, where('tutorId', '==', tutorId)))
+  const stopShared = subscribe('shared', query(classesCollection, where('teacherIds', 'array-contains', tutorId)))
+  return () => {
+    stopOwned()
+    stopShared()
+  }
 }

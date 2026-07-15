@@ -39,7 +39,9 @@ La constància setmanal progressa quan l’alumne practica fins a tres tipus dif
 
 Les tres missions personals setmanals reforcen planificar, dividir i revisar. Les missions cooperatives les crea el tutor amb un hàbit i un objectiu de contribucions.
 
-Cada alumne pot aportar una vegada a una missió si ja ha practicat aquell hàbit durant la setmana. La classe i el tutor només veuen el total; el marcador individual de contribució queda dins l’espai privat de l’alumne. No hi ha rànquing ni llista de participants.
+Cada alumne pot aportar una vegada a una missió si ja ha practicat aquell hàbit durant la setmana. La classe i el tutor només veuen el total; el marcador individual de contribució queda dins l’espai privat de l’alumne. Aquestes missions no generen cap rànquing ni llista de participants. El podi de la Sala d’estudi és un sistema separat: mostra els 3 XP de constància més alts i els 2 aspirants següents, però no la resta de la classificació.
+
+Cada alumne veu privadament la seva posició dins del total i rep un avís neutre quan puja o baixa. La resta de posicions no es publica. Mentre el projecte utilitzi el pla gratuït de Firebase, el recompte segur s’actualitza automàticament quan el tutor té oberta l’aplicació; així no cal exposar la classificació completa als navegadors dels alumnes.
 
 ## Controls de l’alumne
 

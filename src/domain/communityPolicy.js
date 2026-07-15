@@ -14,7 +14,7 @@ export const normalizeCommunityPost = ({ type, title, body, authorRole }) => {
 
 export const normalizeReply = (body) => ({ body: clean(body, 'La resposta') })
 
-export const detectCommonTasks = ({ students = [], tasksByStudent = {}, ratio = 0.5, minimumStudents = 5 }) => {
+export const detectCommonTasks = ({ students = [], tasksByStudent = {}, ratio = 0, minimumStudents = 3 }) => {
   const activeIds = new Set(students.filter((student) => student.active !== false).map((student) => student.id))
   const requiredCount = Math.max(minimumStudents, Math.ceil(activeIds.size * ratio))
   if (activeIds.size < minimumStudents) return []
@@ -26,6 +26,33 @@ export const detectCommonTasks = ({ students = [], tasksByStudent = {}, ratio = 
     groups.set(task.fingerprint, group)
   }))
   return [...groups.values()].filter((group) => group.matchingStudents.size >= requiredCount).map(({ matchingStudents, ...group }) => ({ ...group, count: matchingStudents.size, requiredCount, classSize: activeIds.size }))
+}
+
+export const detectCommonTaskContradictions = ({ students = [], tasksByStudent = {}, minimumStudents = 3 }) => {
+  const activeIds = new Set(students.filter((student) => student.active !== false).map((student) => student.id))
+  if (activeIds.size < minimumStudents) return []
+  const groups = new Map()
+  activeIds.forEach((studentId) => (tasksByStudent[studentId] ?? []).forEach((task) => {
+    if (!task.fingerprint || task.status === 'done') return
+    const parts = String(task.fingerprint).split('|')
+    const topicKey = parts.slice(0, -1).join('|')
+    if (!topicKey) return
+    const deadlineKey = task.deadline?.at ? String(task.deadline.at).slice(0, 10) : task.deadline?.certainty ?? 'without_date'
+    const group = groups.get(topicKey) ?? { topicKey, subjectId: task.subjectId, title: task.title, students: new Set(), variants: new Map() }
+    group.students.add(studentId)
+    const variant = group.variants.get(deadlineKey) ?? { key: deadlineKey, deadline: task.deadline ?? null, count: 0, students: new Set() }
+    if (!variant.students.has(studentId)) { variant.students.add(studentId); variant.count += 1 }
+    group.variants.set(deadlineKey, variant)
+    groups.set(topicKey, group)
+  }))
+  return [...groups.values()].filter((group) => group.students.size >= minimumStudents && group.variants.size > 1).map((group) => ({
+    id: `contradiction:${group.topicKey}`,
+    topicKey: group.topicKey,
+    subjectId: group.subjectId,
+    title: group.title,
+    count: group.students.size,
+    variants: [...group.variants.values()].map(({ students: ignored, ...variant }) => variant).sort((left, right) => right.count - left.count || left.key.localeCompare(right.key)),
+  }))
 }
 
 export const buildCommonTaskCorrection = ({ candidate, title, deadlineAt }) => {

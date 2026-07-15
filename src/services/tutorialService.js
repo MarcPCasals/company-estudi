@@ -11,26 +11,37 @@ const studentPath = (classId, studentId) => ['classes', classId, 'students', stu
 const collectionData = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
 
 export const observeTutorClassActivity = ({ classId, students }, onData, onError) => {
-  const state = { tasksByStudent: {}, sessionsByStudent: {} }
-  const emit = () => onData({ ...state, tasksByStudent: { ...state.tasksByStudent }, sessionsByStudent: { ...state.sessionsByStudent } })
-  const stops = students.flatMap((student) => ['tasks', 'studySessions'].map((name) => onSnapshot(
-    collection(requireDb(), ...studentPath(classId, student.id), name),
-    (snapshot) => { state[name === 'tasks' ? 'tasksByStudent' : 'sessionsByStudent'][student.id] = collectionData(snapshot); emit() },
-    onError,
-  )))
+  const state = { tasksByStudent: {}, sessionsByStudent: {}, studyProgressByStudent: {} }
+  const emit = () => onData({ ...state, tasksByStudent: { ...state.tasksByStudent }, sessionsByStudent: { ...state.sessionsByStudent }, studyProgressByStudent: { ...state.studyProgressByStudent } })
+  if (students.length === 0) {
+    emit()
+    return () => {}
+  }
+  const stops = students.flatMap((student) => [
+    ...['tasks', 'studySessions'].map((name) => onSnapshot(
+      collection(requireDb(), ...studentPath(classId, student.id), name),
+      (snapshot) => { state[name === 'tasks' ? 'tasksByStudent' : 'sessionsByStudent'][student.id] = collectionData(snapshot); emit() },
+      onError,
+    )),
+    onSnapshot(doc(requireDb(), ...studentPath(classId, student.id), 'studyRoomProgress', 'current'), (snapshot) => {
+      state.studyProgressByStudent[student.id] = snapshot.exists() ? snapshot.data() : { totalXp: 0, rewardedBlocks: 0 }
+      emit()
+    }, onError),
+  ])
   return () => stops.forEach((stop) => stop())
 }
 
-export const observeStudentTutorial = ({ classId, studentId }, onData, onError) => {
-  const state = { goal: null, reviews: [], feedback: [], suggestions: [], notices: [], tasks: [], availability: null }
+export const observeStudentTutorial = ({ classId, studentId, includePrivatePlanning = false }, onData, onError) => {
+  const state = { goal: null, reviews: [], feedback: [], suggestions: [], notices: [], tasks: [], sessions: [], occupations: [], availability: null }
   const emit = () => onData({ ...state })
   const observeList = (key, name) => onSnapshot(collection(requireDb(), ...studentPath(classId, studentId), name), (snapshot) => { state[key] = collectionData(snapshot); emit() }, onError)
   const stops = [
     observeList('reviews', 'tutorialSubmissions'), observeList('feedback', 'tutorFeedback'),
-    observeList('suggestions', 'sessionSuggestions'), observeList('notices', 'notices'), observeList('tasks', 'tasks'),
+    observeList('suggestions', 'sessionSuggestions'), observeList('notices', 'notices'), observeList('tasks', 'tasks'), observeList('sessions', 'studySessions'),
     onSnapshot(doc(requireDb(), ...studentPath(classId, studentId), 'tutorialGoals', 'current'), (snapshot) => { state.goal = snapshot.exists() ? snapshot.data() : null; emit() }, onError),
     onSnapshot(doc(requireDb(), ...studentPath(classId, studentId), 'availability', 'current'), (snapshot) => { state.availability = snapshot.exists() ? snapshot.data() : null; emit() }, onError),
   ]
+  if (includePrivatePlanning) stops.push(observeList('occupations', 'personalSchedule'))
   return () => stops.forEach((stop) => stop())
 }
 

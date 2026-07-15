@@ -12,6 +12,13 @@ describe('configuració inicial de planificació', () => {
     ]))
   })
 
+  it('rebutja ocupacions recurrents que se solapen el mateix dia', () => {
+    expect(() => normalizePlanningSetup({ activities: [
+      { day: 'monday', start: '18:00', end: '19:00', label: 'Música', type: 'extracurricular' },
+      { day: 'monday', start: '18:30', end: '19:30', label: 'Entrenament', type: 'extracurricular' },
+    ] })).toThrow('se solapen')
+  })
+
   it('manté el nom de l’extraescolar fora del resum tutorial', () => {
     const setup = normalizePlanningSetup({
       activities: [{ day: 'monday', start: '18:00', end: '19:30', label: 'Futbol' }],

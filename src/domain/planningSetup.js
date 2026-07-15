@@ -55,6 +55,13 @@ export const normalizePlanningSetup = ({
     if (!OCCUPATION_TYPES.has(type)) throw new Error('El tipus d’ocupació no és vàlid.')
     return { id: `activity-${index}`, day, start, end, label, type }
   })
+  const overlapping = cleanActivities.find((activity, index) => cleanActivities.some((other, otherIndex) => (
+    index !== otherIndex
+    && activity.day === other.day
+    && activity.start < other.end
+    && activity.end > other.start
+  )))
+  if (overlapping) throw new Error('Hi ha ocupacions que se solapen el mateix dia. Revisa les hores abans de desar.')
 
   const availableAfterByDay = Object.fromEntries(
     WEEK_DAYS.slice(0, 5).map(({ id }) => [

@@ -6,16 +6,22 @@ import { ClipboardText } from '@phosphor-icons/react/dist/csr/ClipboardText'
 import { GearSix } from '@phosphor-icons/react/dist/csr/GearSix'
 import { House } from '@phosphor-icons/react/dist/csr/House'
 import { SignOut } from '@phosphor-icons/react/dist/csr/SignOut'
+import { Timer } from '@phosphor-icons/react/dist/csr/Timer'
 import { WEEK_DAYS } from '../data/defaultSchedule.js'
 import { DEFAULT_SUBJECT_COLORS, DEFAULT_SUBJECTS } from '../data/subjects.js'
 import { loadStudentPlanningSetup, saveStudentPlanningSetup } from '../services/planningSetupService.js'
+import { observeCommunityUnreadCount } from '../services/communityService.js'
 import TaskWorkspace from './TaskWorkspace.jsx'
 import CalendarWorkspace from './CalendarWorkspace.jsx'
 import StudentTutorialPanel from './StudentTutorialPanel.jsx'
 import CommunitySpace from './CommunitySpace.jsx'
 import StudentGamificationPanel from './StudentGamificationPanel.jsx'
+import StudentHome from './StudentHome.jsx'
+import StudyRoom from './StudyRoom.jsx'
+import PiuBrand from './PiuBrand.jsx'
 
-const newActivity = () => ({ day: 'monday', start: '18:00', end: '19:00', label: '', type: 'extracurricular' })
+const newActivity = () => ({ day: 'monday', days: ['monday'], start: '18:00', end: '19:00', label: '', type: 'extracurricular' })
+const addMinutesToClock = (time, minutes) => { const [hours, minutePart] = String(time).split(':').map(Number); const total = (hours * 60) + minutePart + Number(minutes || 0); return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}` }
 
 const STUDENT_VIEWS = [
   { id: 'today', label: 'Avui', Icon: House },
@@ -23,10 +29,11 @@ const STUDENT_VIEWS = [
   { id: 'tasks', label: 'Deures', Icon: ClipboardText },
   { id: 'community', label: 'Comunitat', Icon: ChatsCircle },
   { id: 'progress', label: 'Progrés', Icon: ChartLineUp },
+  { id: 'study', label: 'Sala', Icon: Timer },
 ]
 
 export default function StudentOnboarding({ session, onLogout }) {
-  const [activeView, setActiveView] = useState('today')
+  const [activeView, setActiveView] = useState('home')
   const [travelMinutes, setTravelMinutes] = useState(15)
   const [restMinutes, setRestMinutes] = useState(30)
   const [weekendEnabled, setWeekendEnabled] = useState(true)
@@ -34,16 +41,21 @@ export default function StudentOnboarding({ session, onLogout }) {
   const [weekendEnd, setWeekendEnd] = useState('18:00')
   const [activities, setActivities] = useState([])
   const [subjectColors, setSubjectColors] = useState(DEFAULT_SUBJECT_COLORS)
+  const [needsPlanningSetup, setNeedsPlanningSetup] = useState(false)
   const [status, setStatus] = useState({ state: 'idle', message: '' })
+  const [communityUnreadCount, setCommunityUnreadCount] = useState(0)
+  const [studyImmersive, setStudyImmersive] = useState(false)
 
   useEffect(() => {
     loadStudentPlanningSetup({ classId: session.classId, studentId: session.studentId })
       .then((setup) => {
         if (!setup) {
-          setActiveView('settings')
-          setStatus({ state: 'info', message: 'Configura primer el teu temps habitual perquè et puguem proposar franges realistes.' })
+          setNeedsPlanningSetup(true)
+          setActiveView('home')
+          setStatus({ state: 'idle', message: '' })
           return
         }
+        setNeedsPlanningSetup(false)
         setTravelMinutes(setup.travelMinutes ?? 15)
         setRestMinutes(setup.restMinutes ?? 30)
         setWeekendEnabled(setup.weekend?.enabled ?? true)
@@ -52,16 +64,34 @@ export default function StudentOnboarding({ session, onLogout }) {
         setActivities((setup.activities ?? []).map((activity) => ({
           ...activity,
           type: activity.type ?? 'other',
+          days: activity.days ?? [activity.day],
         })))
         setSubjectColors({ ...DEFAULT_SUBJECT_COLORS, ...(setup.subjectColors ?? {}) })
       })
       .catch((error) => setStatus({ state: 'error', message: error.message }))
   }, [session.classId, session.studentId])
 
+  useEffect(() => observeCommunityUnreadCount(
+    { classId: session.classId, studentId: session.studentId },
+    setCommunityUnreadCount,
+    () => setCommunityUnreadCount(0),
+  ), [session.classId, session.studentId])
+
   const updateActivity = (index, field, value) => setActivities((current) =>
     current.map((activity, activityIndex) => activityIndex === index
       ? { ...activity, [field]: value }
       : activity))
+  const toggleActivityDay = (index, dayId) => setActivities((current) => current.map((activity, activityIndex) => activityIndex !== index ? activity : { ...activity, days: activity.days?.includes(dayId) ? activity.days.filter((day) => day !== dayId) : [...(activity.days ?? []), dayId] }))
+  const availabilityPreview = WEEK_DAYS.map((day) => {
+    const schoolEnd = session.schoolSchedule?.[day.id]?.schoolEndsAt
+    const start = day.id === 'saturday' || day.id === 'sunday' ? (weekendEnabled ? weekendStart : null) : addMinutesToClock(schoolEnd ?? '17:00', Number(travelMinutes) + Number(restMinutes))
+    const end = day.id === 'saturday' || day.id === 'sunday' ? weekendEnd : '21:30'
+    if (!start) return { ...day, text: 'Temps lliure protegit' }
+    const windows = []; let cursor = start
+    activities.filter((activity) => activity.days?.includes(day.id) || activity.day === day.id).sort((left, right) => left.start.localeCompare(right.start)).forEach((activity) => { if (activity.end <= cursor || activity.start >= end) return; if (activity.start > cursor) windows.push(`${cursor}–${activity.start}`); if (activity.end > cursor) cursor = activity.end })
+    if (cursor < end) windows.push(`${cursor}–${end}`)
+    return { ...day, text: windows.length ? `Pots estudiar ${windows.join(' · ')}` : 'Dia sense franges disponibles' }
+  })
 
   const submit = async (event) => {
     event.preventDefault()
@@ -76,37 +106,42 @@ export default function StudentOnboarding({ session, onLogout }) {
         weekendEnabled,
         weekendStart,
         weekendEnd,
-        activities,
+        activities: activities.flatMap((activity) => (activity.days?.length ? activity.days : [activity.day]).map((day) => ({ ...activity, day, days: undefined }))),
         subjectColors,
       })
+      setNeedsPlanningSetup(false)
       setStatus({ state: 'success', message: 'Configuració desada. Ja podem proposar franges realistes.' })
-      setActiveView('today')
+      setActiveView('home')
     } catch (error) {
       setStatus({ state: 'error', message: error.message })
     }
   }
 
   return (
-    <div className="student-app">
-      <header className="student-topbar">
-        <button type="button" className="student-brand" onClick={() => setActiveView('today')}>
-          <span>Company d’estudi</span>
-        </button>
-        <nav className="student-primary-nav" aria-label="Navegació de l’alumne">
+    <div className={`student-app view-${activeView} ${studyImmersive ? 'study-immersive' : ''}`}>
+      {!studyImmersive && <header className="student-topbar">
+        <PiuBrand className="student-brand" onClick={() => setActiveView('home')} />
+        {activeView !== 'home' && <nav className="student-primary-nav" aria-label="Navegació de l’alumne">
           {STUDENT_VIEWS.map(({ id, label, Icon }) => (
             <button
               type="button"
-              className={activeView === id ? 'active' : ''}
-              aria-current={activeView === id ? 'page' : undefined}
+              className={activeView === id || (id === 'progress' && ['messages', 'review'].includes(activeView)) ? 'active' : ''}
+              aria-current={activeView === id || (id === 'progress' && ['messages', 'review'].includes(activeView)) ? 'page' : undefined}
+              aria-label={id === 'community' && communityUnreadCount > 0
+                ? `${label}, ${communityUnreadCount} continguts nous`
+                : label}
+              title={label}
               key={id}
               onClick={() => setActiveView(id)}
             >
-              <Icon size={23} weight={activeView === id ? 'fill' : 'regular'} aria-hidden="true" />
+              <Icon size={23} weight={activeView === id || (id === 'progress' && ['messages', 'review'].includes(activeView)) ? 'fill' : 'regular'} aria-hidden="true" />
               <span>{label}</span>
-              {id === 'community' && <small aria-label="2 continguts nous">2</small>}
+              {id === 'community' && communityUnreadCount > 0 && (
+                <small aria-hidden="true">{communityUnreadCount > 99 ? '99+' : communityUnreadCount}</small>
+              )}
             </button>
           ))}
-        </nav>
+        </nav>}
         <div className="student-account-actions">
           <button
             type="button"
@@ -122,9 +157,10 @@ export default function StudentOnboarding({ session, onLogout }) {
             <SignOut size={23} aria-hidden="true" />
           </button>
         </div>
-      </header>
+      </header>}
 
       <main className="student-app-content">
+        {activeView === 'home' && <StudentHome session={session} onNavigate={setActiveView} setupIncomplete={needsPlanningSetup} communityUnreadCount={communityUnreadCount} />}
         {activeView === 'today' && (
           <CalendarWorkspace
             session={session}
@@ -148,12 +184,15 @@ export default function StudentOnboarding({ session, onLogout }) {
             studentId={session.studentId}
           />
         )}
-        {activeView === 'progress' && (
+        {['progress', 'messages', 'review'].includes(activeView) && (
           <div className="progress-page">
-            <StudentGamificationPanel session={session} />
-            <StudentTutorialPanel session={session} />
+            <nav className="progress-section-nav" aria-label="Progrés, missatges i revisió">{[['progress', 'Hàbits i progrés'], ['messages', 'Missatges'], ['review', 'Revisió setmanal']].map(([id, label]) => <button type="button" className={activeView === id ? '' : 'secondary'} aria-current={activeView === id ? 'page' : undefined} key={id} onClick={() => setActiveView(id)}>{label}</button>)}</nav>
+            {activeView === 'progress' && <StudentGamificationPanel session={session} onOpenReview={() => setActiveView('review')} />}
+            {activeView === 'messages' && <StudentTutorialPanel session={session} section="messages" />}
+            {activeView === 'review' && <StudentTutorialPanel session={session} section="review" />}
           </div>
         )}
+        {activeView === 'study' && <StudyRoom session={session} onImmersiveChange={setStudyImmersive} onExit={() => { setStudyImmersive(false); setActiveView('home') }} />}
         {activeView === 'settings' && (
           <section className="student-settings-page" aria-labelledby="student-settings-title">
             <div className="settings-page-heading">
@@ -208,18 +247,21 @@ export default function StudentOnboarding({ session, onLogout }) {
                       <option value="meal">Àpat</option>
                       <option value="other">Altres</option>
                     </select>
-                    <select aria-label="Dia" value={activity.day} onChange={(event) => updateActivity(index, 'day', event.target.value)}>
-                      {WEEK_DAYS.map((day) => <option key={day.id} value={day.id}>{day.label}</option>)}
-                    </select>
+                    <fieldset className="activity-days"><legend>Dies</legend>{WEEK_DAYS.map((day, dayIndex) => <label key={day.id}><input type="checkbox" aria-label={day.label} checked={activity.days?.includes(day.id)} onChange={() => toggleActivityDay(index, day.id)} />{['Dl', 'Dt', 'Dc', 'Dj', 'Dv', 'Ds', 'Dg'][dayIndex]}</label>)}</fieldset>
                     <input aria-label="Inici" type="time" value={activity.start} onChange={(event) => updateActivity(index, 'start', event.target.value)} />
                     <input aria-label="Final" type="time" value={activity.end} onChange={(event) => updateActivity(index, 'end', event.target.value)} />
                     <input aria-label="Nom privat" value={activity.label} onChange={(event) => updateActivity(index, 'label', event.target.value)} placeholder="Nom privat" />
-                    <button type="button" className="secondary" onClick={() => setActivities((current) => current.filter((_, activityIndex) => activityIndex !== index))}>Elimina</button>
+                    <div className="activity-actions"><button type="button" className="secondary" onClick={() => setActivities((current) => [...current, { ...activity, label: `${activity.label} còpia` }])}>Duplica</button><button type="button" className="secondary" onClick={() => setActivities((current) => current.filter((_, activityIndex) => activityIndex !== index))}>Elimina</button></div>
                   </div>
                 ))}
               </section>
 
-              <section>
+              <section className="availability-preview"><h2>Previsualització de la setmana</h2><div>{availabilityPreview.map((day) => <article key={day.id}><strong>{day.label}</strong><span>{day.text}</span></article>)}</div></section>
+
+              <section className="xp-system-explanation"><h2>Dos progressos diferents</h2><div><article><strong>XP d’hàbits</strong><p>Reconeixen accions d’organització. Són privats: només els veus tu.</p></article><article><strong>XP de Sala d’estudi</strong><p>Compten blocs de concentració. Poden aparèixer al podi i als aspirants de la Sala d’estudi.</p></article></div><small>Tenir 20 XP d’hàbits i 0 XP de Sala d’estudi és normal: cap progrés s’ha perdut.</small></section>
+
+              <details className="appearance-settings">
+                <summary>Aparença i colors</summary>
                 <div className="inline-heading"><div><h2>Colors de les assignatures</h2><p>Pots adaptar-los al teu gust. El text i les icones continuen identificant cada assignatura.</p></div></div>
                 <div className="subject-color-grid">
                   {DEFAULT_SUBJECTS.map((subject) => (
@@ -234,9 +276,9 @@ export default function StudentOnboarding({ session, onLogout }) {
                     </label>
                   ))}
                 </div>
-              </section>
+              </details>
 
-              <button type="submit" disabled={status.state === 'loading'}>
+              <button type="submit" className="sticky-settings-save" disabled={status.state === 'loading'}>
                 {status.state === 'loading' ? 'Desant…' : 'Desa la configuració'}
               </button>
             </form>

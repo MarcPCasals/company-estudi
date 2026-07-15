@@ -37,6 +37,15 @@ jobs:
       - name: Executa les proves
         run: npm test
 
+      - name: Configura Java per als emuladors de Firebase
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Prova permisos, privacitat i concurrència
+        run: npm run test:emulators
+
       - name: Construeix l'aplicació
         run: npm run build
 

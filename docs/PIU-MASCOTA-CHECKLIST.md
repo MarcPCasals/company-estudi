@@ -466,10 +466,10 @@ El niu ha de donar context a Piu sense convertir l'aplicació en un joc de decor
 
 ## 7.1. Definir un model d'estat centralitzat
 
-- [ ] Crear un únic component o servei que decideixi quin Piu es mostra.
-- [ ] Evitar condicions disperses per tota l'aplicació.
-- [ ] Prioritzar estats quan coincideixen diverses condicions.
-- [ ] Definir un estat de reserva segur: `base`.
+- [x] Crear un únic component o servei que decideixi quin Piu es mostra.
+- [x] Evitar condicions disperses per tota l'aplicació.
+- [x] Prioritzar estats quan coincideixen diverses condicions.
+- [x] Definir un estat de reserva segur: `base`.
 
 ### Exemple d'estats
 
@@ -525,6 +525,81 @@ Quan coincideixen diverses condicions:
 - [ ] Fer càrrega diferida de variants no visibles.
 - [ ] Evitar que Piu desplaci contingut o provoqui salts de layout.
 - [ ] Comprovar contrast i llegibilitat dels globus de text.
+
+## 7.5. Dos sistemes visuals independents
+
+Piu no combinarà les emocions amb les etapes d'evolució. Són dos sistemes amb usos diferents:
+
+> Les decisions detallades, l'inventari complet, les durades i les simulacions d'XP es troben a [`PIU-LOGICA-VIVA.md`](PIU-LOGICA-VIVA.md).
+
+1. **Piu adult emocional:** s'utilitza a tota l'aplicació fora de la Sala d'estudi. Reacciona a accions, contextos i moments funcionals.
+2. **Piu evolutiu de la Sala d'estudi:** utilitza una de les 14 imatges associades a l'XP. Només apareix dins de la Sala d'estudi, al resum del seu progrés i als rànquings de constància.
+
+- [x] Mantenir el Piu adult per a totes les emocions i reaccions generals.
+- [x] No crear variants emocionals de les 14 evolucions.
+- [x] Evitar que el nivell de Sala d'estudi canviï la imatge emocional de Piu fora d'aquesta sala.
+- [x] Mostrar la miniatura de l'evolució actual als cinc alumnes visibles del podi i els aspirants.
+- [x] Mostrar l'evolució pròpia al costat de la posició privada de cada alumne.
+- [x] Utilitzar noms, components i carpetes diferents per impedir que els dos sistemes es barregin al codi.
+
+## 7.6. Motor de decisions perquè Piu sembli viu
+
+La imatge emocional no es decidirà directament dins de cada pantalla. Les pantalles enviaran context a un únic motor, que resoldrà quin Piu adult s'ha de mostrar.
+
+- [x] Inventariar les 29 imatges de `public/mascota/piu/emocions/` i definir el significat exacte de cadascuna.
+- [x] Separar els estats funcionals persistents de les reaccions transitòries.
+- [x] Crear una taula amb aquestes columnes: context, desencadenant, condició, imatge, missatge, prioritat, durada mínima, refredament i estat de retorn.
+- [x] Fer que cada reacció transitòria torni sempre a un estat funcional coherent.
+- [x] Evitar que una actualització de dades o un canvi ràpid de pantalla faci parpellejar diverses imatges.
+- [x] No repetir la mateixa reacció intensa diverses vegades seguides.
+- [x] Definir `piu-repos.png` com a reserva segura quan falta una imatge o el context és ambigu.
+
+### Situacions que cal decidir explícitament
+
+- [x] `pensant`: durant la planificació o una espera real de més de 700 ms; no per qualsevol càrrega instantània.
+- [x] `content` o `satisfet`: després d'un pas útil, sense convertir cada clic en una recompensa.
+- [x] `molt-content`, `orgullos` o `celebracio`: només per una fita clara i amb temps de refredament.
+- [x] `esperant`: quan no hi ha cap acció urgent; mai com a retret per inactivitat.
+- [x] `cansat` o `descansant`: després de 50 minuts d'ús actiu o d'una pausa escollida.
+- [x] `preocupat`: davant d'un problema recuperable que necessita atenció, mai per una nota baixa.
+- [x] `molest`, `enfadat`, `decebut` i `molt-decebut-facepalm`: exclosos de l'MVP.
+- [x] `dormint`: després de les 22.30, si no hi ha cap activitat en curs.
+- [x] `temps-lliure-musica` o `temps-lliure-rubik`: després de la jornada, quan no hi ha cap sessió ni ocupació en curs; variant estable per alumne i dia.
+
+### Sala d'estudi · mode de concentració
+
+- [x] Primer bloc: Piu preparant-se per treballar, envoltat per un marc verd que representa el temps restant.
+- [x] Segon bloc: Piu en concentració més intensa, amb el mateix marc temporal.
+- [x] Pausa: alternança Música/Rubik entre sessions, sense canviar en recarregar la pàgina.
+- [x] Cronòmetre numèric ocult per defecte i visible només durant 5 segons quan l'alumne el demana.
+- [x] Confeti en acabar cada bloc i enfosquiment lateral gradual durant la concentració, respectant `prefers-reduced-motion`.
+
+## 7.7. Rangs d'experiència de la Sala d'estudi
+
+Els rangs següents ja estan implementats per durar un curs escolar. Una sessió completa dona 20 XP i el màxim diari és de 40 XP; la primera sessió, per si sola, no desbloqueja cap evolució.
+
+| Nivell | Evolució | Rang d'XP | Sessions completes aproximades per arribar-hi |
+|---:|---|---:|---:|
+| 1 | Ou | `0-39` | inicial |
+| 2 | Ou esquerdat | `40-99` | 2 |
+| 3 | Traient el cap | `100-199` | 5 |
+| 4 | Acabat de néixer | `200-349` | 10 |
+| 5 | Pollet | `350-549` | 18 |
+| 6 | Adolescent | `550-799` | 28 |
+| 7 | Adult | `800-1099` | 40 |
+| 8 | Professional | `1100-1449` | 55 |
+| 9 | Graduat | `1450-1849` | 73 |
+| 10 | Aprenent de mag | `1850-2299` | 93 |
+| 11 | Mag | `2300-2999` | 115 |
+| 12 | Gran mag | `3000-3999` | 150 |
+| 13 | Mestre del temps | `4000-5999` | 200 |
+| 14 | Llegendari | `6000+` | 300 |
+
+- [x] Simular el progrés amb una sessió completa al dia, dues sessions al dia i tres sessions per setmana.
+- [x] Decidir que un ús d'una sessió per dia lectiu arriba aproximadament a `Gran mag` al final del curs.
+- [x] Comprovar que el primer canvi exigeix dues sessions completes i que `Llegendari` demana almenys 30 setmanes al màxim diari.
+- [x] Decidir que una evolució nova s'anuncia una sola vegada al resum de la Sala d'estudi.
+- [x] Garantir que cap període d'inactivitat redueixi XP ni faci retrocedir Piu.
 
 ---
 
@@ -603,7 +678,7 @@ Les primeres animacions han de ser subtils i reutilitzables.
 
 ## Fase 3 · Integració estàtica
 
-- [ ] Crear el component visual de Piu.
+- [x] Crear el component visual de Piu.
 - [ ] Implementar els deu estats definits.
 - [ ] Afegir missatges associats.
 - [ ] Comprovar mides responsive.

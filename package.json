@@ -6,9 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:firebase": "VITE_DEPLOY_TARGET=firebase vite build",
+    "check:firebase-build": "npm run build:firebase && node -e \"const h=require('fs').readFileSync('dist/index.html','utf8'); if (/\\\"\\/company-estudi\\//.test(h)) process.exit(1); if (!/src=\\\"\\/assets\\//.test(h)) process.exit(1); console.log('Rutes de Firebase correctes: /assets/...')\"",
     "preview": "vite preview",
     "dev:emulators": "VITE_USE_FIREBASE_EMULATORS=true vite",
     "emulators": "npx firebase-tools emulators:start --only auth,firestore",
+    "test:firebase-emulators": "VITE_USE_FIREBASE_EMULATORS=true VITE_RUN_FIREBASE_EMULATOR_TESTS=true VITE_FIREBASE_API_KEY=fake-api-key VITE_FIREBASE_AUTH_DOMAIN=localhost VITE_FIREBASE_PROJECT_ID=company-estudi VITE_FIREBASE_APP_ID=1:123:web:qa vitest run --no-file-parallelism src/services/studyRoomEmulator.test.js src/services/firestoreRulesEmulator.test.js",
+    "test:study-room-emulator": "npm run test:firebase-emulators",
+    "test:emulators": "npx firebase-tools emulators:exec --only auth,firestore \"npm run test:firebase-emulators\"",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -19,6 +24,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@vitejs/plugin-react": "^6.0.3",
     "vite": "^8.1.4",
     "vitest": "^4.1.10"

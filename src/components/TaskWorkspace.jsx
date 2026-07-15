@@ -8,6 +8,9 @@ import {
   createDeadline,
   findPotentialDuplicateTasks,
 } from '../domain/dataModel.js'
+import { PIU_EVENT, PIU_SURFACE, resolvePiuVisualState } from '../domain/piuVisualState.js'
+import { buildWeekDays, suggestStudySlots, validateStudySlot } from '../domain/calendarPlanning.js'
+import { observeStudentCalendar } from '../services/calendarService.js'
 import {
   createStudentTask,
   loadPrivateTaskDetails,
@@ -20,6 +23,7 @@ import {
   updateStudentTaskProgress,
   updateStudentTaskStatus,
 } from '../services/taskService.js'
+import PiuVisual from './PiuVisual.jsx'
 
 const STATUS_LABELS = {
   [TASK_STATUS.NEEDS_CLARIFICATION]: 'Per aclarir',
@@ -49,18 +53,10 @@ const toLocalInputValue = (value) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-const tomorrowDeadline = () => {
+const tomorrowDate = () => {
   const date = new Date()
   date.setDate(date.getDate() + 1)
-  date.setHours(23, 59, 0, 0)
-  return toLocalInputValue(date)
-}
-
-const nextPlanningTime = () => {
-  const date = new Date()
-  date.setDate(date.getDate() + 1)
-  date.setHours(17, 30, 0, 0)
-  return toLocalInputValue(date)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
 const initialForm = () => ({
@@ -68,7 +64,8 @@ const initialForm = () => ({
   title: '',
   taskType: TASK_TYPE.HOMEWORK,
   deadlineCertainty: DEADLINE_CERTAINTY.CONFIRMED,
-  deadlineAt: tomorrowDeadline(),
+  deadlineDate: tomorrowDate(),
+  deadlineTime: '',
   estimatedMinutes: '',
   stepsText: '',
   material: '',
@@ -86,7 +83,7 @@ const formToInput = (form) => ({
     certainty: form.deadlineCertainty,
     at: form.deadlineCertainty === DEADLINE_CERTAINTY.WITHOUT_DATE
       ? null
-      : form.deadlineAt,
+      : `${form.deadlineDate}T${form.deadlineTime || '23:59'}`,
   },
   estimatedMinutes: form.estimatedMinutes,
   steps: form.stepsText.split('\n').map((step) => step.trim()).filter(Boolean),
@@ -109,6 +106,20 @@ const formatDate = (value) => new Intl.DateTimeFormat('ca-AD', {
   timeStyle: 'short',
 }).format(new Date(value))
 
+function QuickInbox({ session, onCreated, onStatus }) {
+  const [text, setText] = useState('')
+  const [subjectId, setSubjectId] = useState('')
+  const submit = async (event) => {
+    event.preventDefault()
+    if (!subjectId) { onStatus('error', 'Tria l’assignatura: la bústia no la inventarà per tu.'); return }
+    try {
+      const task = await createStudentTask({ classId: session.classId, studentId: session.studentId, input: { subjectId, title: text, taskType: TASK_TYPE.HOMEWORK, deadline: { certainty: DEADLINE_CERTAINTY.WITHOUT_DATE, at: null }, estimatedMinutes: '', steps: [], material: '', privateNote: '', helpRequested: false, requiresDelivery: false, needsClarification: true } })
+      setText(''); setSubjectId(''); onCreated(task.id); onStatus('success', 'Apuntat a la bústia. No hem inventat ni termini ni durada.', PIU_EVENT.TASK_SAVED)
+    } catch (error) { onStatus('error', error.message) }
+  }
+  return <form className="quick-inbox" onSubmit={submit}><div><span className="eyebrow">Bústia ràpida</span><strong>Apunta-ho ara i completa-ho després</strong><small>No interpretarem dades ambigües.</small></div><input required minLength="2" maxLength="200" aria-label="Què vols recordar?" placeholder="Exercicis 4–8, dijous" value={text} onChange={(event) => setText(event.target.value)} /><select required aria-label="Assignatura de la nota ràpida" value={subjectId} onChange={(event) => setSubjectId(event.target.value)}><option value="">Tria assignatura…</option>{DEFAULT_SUBJECTS.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select><button>Apunta</button></form>
+}
+
 function AddTaskForm({ tasks, session, onCreated, onStatus }) {
   const [form, setForm] = useState(initialForm)
   const [duplicateWarning, setDuplicateWarning] = useState(null)
@@ -126,7 +137,7 @@ function AddTaskForm({ tasks, session, onCreated, onStatus }) {
       setForm(initialForm())
       setDuplicateWarning(null)
       onCreated(task.id)
-      onStatus('success', 'Tasca desada. Ara pots planificar quan la faràs.')
+      onStatus('success', 'Tasca desada. Ara pots planificar quan la faràs.', PIU_EVENT.TASK_SAVED)
     } catch (error) {
       onStatus('error', error.message)
     }
@@ -171,7 +182,7 @@ function AddTaskForm({ tasks, session, onCreated, onStatus }) {
           </select>
         </label>
         <label>
-          Abast
+          Tipus
           <select
             value={form.taskType}
             onChange={(event) => {
@@ -191,6 +202,8 @@ function AddTaskForm({ tasks, session, onCreated, onStatus }) {
         <input required minLength={2} maxLength={200} value={form.title} onChange={(event) => update('title', event.target.value)} placeholder="Exercicis 4–8 de la pàgina 36" />
       </label>
 
+      {[TASK_TYPE.PROJECT, TASK_TYPE.EXAM].includes(form.taskType) && <div className="large-task-guide" role="note"><strong>Prepara aquesta activitat gran</strong><p>Indica el temps estimat i escriu els passos. El planificador setmanal els repartirà en blocs de màxim 60 minuts i en dies diferents quan hi hagi capacitat.</p></div>}
+
       <div className="task-quick-fields">
         <label>
           Termini
@@ -202,10 +215,11 @@ function AddTaskForm({ tasks, session, onCreated, onStatus }) {
         </label>
         {form.deadlineCertainty !== DEADLINE_CERTAINTY.WITHOUT_DATE && (
           <label>
-            Data i hora
-            <input required type="datetime-local" value={form.deadlineAt} onChange={(event) => update('deadlineAt', event.target.value)} />
+            Data
+            <input required type="date" value={form.deadlineDate} onChange={(event) => update('deadlineDate', event.target.value)} />
           </label>
         )}
+        {form.deadlineCertainty !== DEADLINE_CERTAINTY.WITHOUT_DATE && <label>Hora exacta (opcional)<input type="time" value={form.deadlineTime} onChange={(event) => update('deadlineTime', event.target.value)} /><span className="field-note">Si la deixes buida, comptarem el final del dia.</span></label>}
       </div>
 
       <details className="task-options">
@@ -260,8 +274,10 @@ function AddTaskForm({ tasks, session, onCreated, onStatus }) {
   )
 }
 
-function PlanTaskForm({ task, onClose, onStatus }) {
-  const [scheduledAt, setScheduledAt] = useState(toLocalInputValue(task.nextPlannedSessionAt) || nextPlanningTime())
+function PlanTaskForm({ task, planningData, schoolSchedule, onClose, onStatus }) {
+  const weekDays = useMemo(() => [...buildWeekDays(new Date()), ...buildWeekDays(new Date(Date.now() + 7 * 86_400_000))], [planningData])
+  const suggestions = useMemo(() => suggestStudySlots({ task, weekDays, availability: planningData.availability, schoolSchedule, sessions: planningData.sessions, occupations: planningData.occupations }), [task, weekDays, planningData, schoolSchedule])
+  const [scheduledAt, setScheduledAt] = useState(toLocalInputValue(task.nextPlannedSessionAt) || toLocalInputValue(suggestions[0]?.scheduledAt))
   const [durationMinutes, setDurationMinutes] = useState(Math.min(task.estimatedMinutes ?? 30, 240))
   const [reason, setReason] = useState('')
 
@@ -269,10 +285,12 @@ function PlanTaskForm({ task, onClose, onStatus }) {
     event.preventDefault()
     onStatus('loading', task.activeSessionId ? 'Reprogramant la sessió…' : 'Creant la sessió de treball…')
     try {
+      const validation = validateStudySlot({ task, scheduledAt, durationMinutes: Number(durationMinutes), availability: planningData.availability, schoolSchedule, sessions: planningData.sessions, occupations: planningData.occupations })
+      if (!validation.valid) throw new Error(validation.reason)
       await planStudentTask(task, { scheduledAt, durationMinutes, reason })
       onStatus('success', task.activeSessionId
         ? 'Sessió reprogramada. Reajustar el pla no és cap penalització.'
-        : 'Tasca planificada correctament.')
+        : 'Tasca planificada correctament.', PIU_EVENT.PLAN_SAVED)
       onClose()
     } catch (error) {
       onStatus('error', error.message)
@@ -282,6 +300,8 @@ function PlanTaskForm({ task, onClose, onStatus }) {
   return (
     <form className="plan-task-form" onSubmit={submit}>
       <strong>{task.activeSessionId ? 'Reprograma la propera sessió' : 'Planifica-la ara'}</strong>
+      {suggestions.length > 0 && <div className="task-slot-suggestions" aria-label="Franges realistes proposades">{suggestions.map((slot) => <button type="button" className="secondary" key={slot.id} onClick={() => { setScheduledAt(toLocalInputValue(slot.scheduledAt)); setDurationMinutes(slot.durationMinutes) }}>{formatDate(slot.scheduledAt)} · {slot.durationMinutes} min</button>)}</div>}
+      {suggestions.length === 0 && <p className="field-note">No trobem cap franja còmoda ara mateix. Revisa ocupacions, disponibilitat o termini.</p>}
       <div className="task-quick-fields">
         <label>Quan <input required type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} /></label>
         <label>Durada (min) <input required type="number" min="10" max="240" step="5" value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)} /></label>
@@ -307,7 +327,7 @@ function DeadlineEditor({ task, onStatus }) {
     onStatus('loading', 'Actualitzant el termini…')
     try {
       await updateStudentTaskDeadline(task, { certainty, at }, reason)
-      onStatus('success', 'Termini actualitzat sense cap penalització.')
+      onStatus('success', 'Termini actualitzat sense cap penalització.', PIU_EVENT.PLAN_SAVED)
     } catch (error) {
       onStatus('error', error.message)
     }
@@ -348,7 +368,7 @@ function PrivateNoteEditor({ task, onStatus }) {
     onStatus('loading', 'Desant la nota privada…')
     try {
       await updatePrivateTaskDetails(task, note)
-      onStatus('success', 'Nota privada desada. Continua sent invisible per al tutor.')
+      onStatus('success', 'Nota privada desada. Continua sent invisible per al tutor.', PIU_EVENT.TASK_SAVED)
     } catch (error) {
       onStatus('error', error.message)
     }
@@ -369,7 +389,7 @@ function PrivateNoteEditor({ task, onStatus }) {
   )
 }
 
-function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus }) {
+function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus, planningData, schoolSchedule }) {
   const subject = DEFAULT_SUBJECTS.find((item) => item.id === task.subjectId)
   const deadlinePassed = task.deadline?.at
     && new Date(task.deadline.at).getTime() < Date.now()
@@ -381,7 +401,7 @@ function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus }) 
       await updateStudentTaskStatus(task, nextStatus, reason)
       onStatus('success', nextStatus === TASK_STATUS.DONE
         ? 'Tasca marcada com a feta. Recorda que “feta” i “entregada” són coses diferents.'
-        : 'Estat actualitzat.')
+        : 'Estat actualitzat.', nextStatus === TASK_STATUS.DONE ? PIU_EVENT.TASK_COMPLETED : PIU_EVENT.TASK_SAVED)
     } catch (error) {
       onStatus('error', error.message)
     }
@@ -391,7 +411,7 @@ function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus }) 
     onStatus('loading', 'Desant l’avanç…')
     try {
       await updateStudentTaskProgress(task, Number(event.target.value))
-      onStatus('success', 'Avanç parcial desat.')
+      onStatus('success', 'Avanç parcial desat.', PIU_EVENT.TASK_SAVED)
     } catch (error) {
       onStatus('error', error.message)
     }
@@ -446,7 +466,7 @@ function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus }) 
       )}
       {task.material && <p><strong>Material:</strong> {task.material}</p>}
 
-      {task.status !== TASK_STATUS.DONE && task.status !== TASK_STATUS.NEEDS_CLARIFICATION && (
+      {task.status === TASK_STATUS.IN_PROGRESS && (
         <label className="progress-control">
           Avanç: {task.progressPercent}%
           <select value={task.progressPercent} onChange={updateProgress}>
@@ -455,33 +475,28 @@ function TaskCard({ task, isRecentlyCreated, planning, setPlanning, onStatus }) 
         </label>
       )}
 
-      <div className="task-actions">
+      <div className="task-primary-action">
         {task.status === TASK_STATUS.NEEDS_CLARIFICATION && <button type="button" onClick={() => changeStatus(TASK_STATUS.PENDING)}>Ja ho tinc clar</button>}
-        {task.status === TASK_STATUS.PENDING && <button type="button" onClick={() => changeStatus(TASK_STATUS.IN_PROGRESS)}>Comença</button>}
+        {task.status === TASK_STATUS.PENDING && !isRecentlyCreated && <button type="button" onClick={() => setPlanning(planning ? '' : task.id)}>Planifica-la</button>}
         {task.status === TASK_STATUS.PLANNED && <button type="button" onClick={() => changeStatus(TASK_STATUS.IN_PROGRESS)}>Comença la tasca</button>}
-        {task.status === TASK_STATUS.IN_PROGRESS && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.PLANNED, 'Necessito reajustar el pla.')}>Pausa i reajusta</button>}
-        {task.status !== TASK_STATUS.DONE && task.status !== TASK_STATUS.NEEDS_CLARIFICATION && <button type="button" onClick={() => changeStatus(TASK_STATUS.DONE)}>Marca com a feta</button>}
-        {task.status !== TASK_STATUS.DONE && task.status !== TASK_STATUS.NEEDS_CLARIFICATION && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.NEEDS_CLARIFICATION, 'Necessito aclarir què cal fer.')}>He d’aclarir-ho</button>}
-        {task.status === TASK_STATUS.DONE && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.PENDING, 'La reobro per revisar-la.')}>Reobre</button>}
-        {task.status !== TASK_STATUS.DONE && task.status !== TASK_STATUS.NEEDS_CLARIFICATION && (
-          <button type="button" className={isRecentlyCreated ? '' : 'secondary'} onClick={() => setPlanning(planning ? '' : task.id)}>
-            {task.activeSessionId ? 'Reprograma' : 'Planifica-la ara'}
-          </button>
-        )}
-        <button type="button" className="secondary" onClick={toggleHelp}>{task.helpRequested ? 'Ja no necessito ajuda' : 'Demana ajuda'}</button>
-        {task.status === TASK_STATUS.DONE && task.requiresDelivery && (
-          <button type="button" className="secondary" onClick={toggleDelivery}>
-            {task.deliveryStatus === DELIVERY_STATUS.DELIVERED ? 'Marca no entregada' : 'Marca entregada'}
-          </button>
-        )}
+        {task.status === TASK_STATUS.IN_PROGRESS && <button type="button" onClick={() => changeStatus(TASK_STATUS.DONE)}>Completa la tasca</button>}
+        {task.status === TASK_STATUS.DONE && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.PENDING, 'La reobro per revisar-la.')}>Reprèn-la</button>}
       </div>
+
+      <details className="task-more-actions"><summary>Més opcions</summary><div className="task-actions">
+        {task.activeSessionId && task.status !== TASK_STATUS.DONE && <button type="button" className="secondary" onClick={() => setPlanning(planning ? '' : task.id)}>Reprograma</button>}
+        {task.status === TASK_STATUS.IN_PROGRESS && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.PLANNED, 'Necessito reajustar el pla.')}>Pausa i reajusta</button>}
+        {task.status !== TASK_STATUS.DONE && <button type="button" className="secondary" onClick={() => changeStatus(TASK_STATUS.NEEDS_CLARIFICATION, 'Necessito aclarir què cal fer.')}>He d’aclarir-ho</button>}
+        <button type="button" className="secondary" onClick={toggleHelp}>{task.helpRequested ? 'Ja no necessito ajuda' : 'Demana ajuda'}</button>
+        {task.status === TASK_STATUS.DONE && task.requiresDelivery && <button type="button" className="secondary" onClick={toggleDelivery}>{task.deliveryStatus === DELIVERY_STATUS.DELIVERED ? 'Marca no entregada' : 'Marca entregada'}</button>}
+      </div></details>
 
       {task.status === TASK_STATUS.DONE && task.requiresDelivery && (
         <p className={`delivery-state ${task.deliveryStatus}`}>
           Feina feta · {task.deliveryStatus === DELIVERY_STATUS.DELIVERED ? 'Entregada' : 'Encara no consta com entregada'}
         </p>
       )}
-      {planning && <PlanTaskForm task={task} onClose={() => setPlanning('')} onStatus={onStatus} />}
+      {planning && <PlanTaskForm task={task} planningData={planningData} schoolSchedule={schoolSchedule} onClose={() => setPlanning('')} onStatus={onStatus} />}
       <div className="task-secondary-editors">
         <DeadlineEditor task={task} onStatus={onStatus} />
         <PrivateNoteEditor task={task} onStatus={onStatus} />
@@ -496,6 +511,12 @@ export default function TaskWorkspace({ session }) {
   const [recentlyCreatedId, setRecentlyCreatedId] = useState('')
   const [planningTaskId, setPlanningTaskId] = useState('')
   const [filter, setFilter] = useState('open')
+  const [sort, setSort] = useState('deadline')
+  const [subjectFilter, setSubjectFilter] = useState('all')
+  const [helpOnly, setHelpOnly] = useState(false)
+  const [creationOpen, setCreationOpen] = useState(false)
+  const [piuEvent, setPiuEvent] = useState(null)
+  const [planningData, setPlanningData] = useState({ sessions: [], occupations: [], availability: null })
 
   useEffect(() => observeStudentTasks(
     { classId: session.classId, studentId: session.studentId },
@@ -503,16 +524,45 @@ export default function TaskWorkspace({ session }) {
     (error) => setStatus({ state: 'error', message: error.message }),
   ), [session.classId, session.studentId])
 
+  useEffect(() => observeStudentCalendar(
+    { classId: session.classId, studentId: session.studentId },
+    setPlanningData,
+    (error) => setStatus({ state: 'error', message: error.message }),
+  ), [session.classId, session.studentId])
+
   const visibleTasks = useMemo(() => tasks.filter((task) => {
     if (filter === 'all') return true
     if (filter === 'done') return task.status === TASK_STATUS.DONE
     return task.status !== TASK_STATUS.DONE
-  }), [filter, tasks])
+  }).filter((task) => subjectFilter === 'all' || task.subjectId === subjectFilter)
+    .filter((task) => !helpOnly || task.helpRequested)
+    .sort((left, right) => sort === 'subject'
+      ? String(left.subjectId).localeCompare(String(right.subjectId), 'ca')
+      : sort === 'status'
+        ? String(left.status).localeCompare(String(right.status), 'ca')
+        : String(left.deadline?.at ?? '9999').localeCompare(String(right.deadline?.at ?? '9999'))), [filter, helpOnly, sort, subjectFilter, tasks])
 
-  const reportStatus = (state, message) => setStatus({ state, message })
+  const piu = resolvePiuVisualState({
+    surface: PIU_SURFACE.TASKS,
+    activity: planningTaskId ? 'planning' : null,
+    event: piuEvent,
+    hasError: status.state === 'error',
+  })
+
+  useEffect(() => {
+    if (!piuEvent) return undefined
+    const timeout = window.setTimeout(() => setPiuEvent(null), piu.minimumDurationMs)
+    return () => window.clearTimeout(timeout)
+  }, [piu.minimumDurationMs, piuEvent])
+
+  const reportStatus = (state, message, event = null) => {
+    setStatus({ state, message })
+    if (event) setPiuEvent(event)
+  }
   const created = (taskId) => {
     setRecentlyCreatedId(taskId)
-    setPlanningTaskId(taskId)
+    setPlanningTaskId('')
+    setCreationOpen(false)
   }
 
   return (
@@ -525,9 +575,12 @@ export default function TaskWorkspace({ session }) {
         <span>{tasks.filter((task) => task.status !== TASK_STATUS.DONE).length} obertes</span>
       </div>
 
-      <AddTaskForm tasks={tasks} session={session} onCreated={created} onStatus={reportStatus} />
+      {(planningTaskId || piuEvent || status.state === 'error') && <aside className="piu-context-card" aria-live="polite">
+        <PiuVisual state={piu.state} />
+        <p>{piu.message}</p>
+      </aside>}
 
-      {recentlyCreatedId && (
+      {recentlyCreatedId && tasks.find((task) => task.id === recentlyCreatedId)?.status !== TASK_STATUS.PLANNED && (
         <div className="plan-now-callout">
           <strong>Tasca desada.</strong>
           <span>El següent pas útil és decidir quan la començaràs.</span>
@@ -544,6 +597,8 @@ export default function TaskWorkspace({ session }) {
         </div>
       </div>
 
+      <details className="task-advanced-filters"><summary>Ordena i filtra</summary><div><label>Ordena per<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="deadline">Termini</option><option value="subject">Assignatura</option><option value="status">Estat</option></select></label><label>Assignatura<select value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}><option value="all">Totes</option>{DEFAULT_SUBJECTS.map((subject) => <option value={subject.id} key={subject.id}>{subject.name}</option>)}</select></label><label className="checkbox-label"><input type="checkbox" checked={helpOnly} onChange={(event) => setHelpOnly(event.target.checked)} />Només les que necessiten ajuda</label></div></details>
+
       {visibleTasks.length === 0 && <p className="empty-task-list">No hi ha tasques en aquesta vista.</p>}
       <div className="task-list">
         {visibleTasks.map((task) => (
@@ -554,9 +609,13 @@ export default function TaskWorkspace({ session }) {
             planning={planningTaskId === task.id}
             setPlanning={setPlanningTaskId}
             onStatus={reportStatus}
+            planningData={planningData}
+            schoolSchedule={session.schoolSchedule}
           />
         ))}
       </div>
+
+      <details className="task-creation-panel" open={creationOpen}><summary onClick={(event) => { event.preventDefault(); setCreationOpen((current) => !current) }}>+ Apunta una tasca</summary><QuickInbox session={session} onCreated={() => { setRecentlyCreatedId(''); setPlanningTaskId(''); setCreationOpen(false) }} onStatus={reportStatus} /><AddTaskForm tasks={tasks} session={session} onCreated={created} onStatus={reportStatus} /></details>
       {status.message && <p className={`form-status ${status.state}`} role="status">{status.message}</p>}
     </section>
   )
